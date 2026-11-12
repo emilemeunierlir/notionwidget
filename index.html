@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Savings Calculator</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --surface: #f7f7f5;
+    --border: #e9e9e7;
+    --text: #37352f;
+    --muted: #787774;
+    --accent: #2383e2;
+    --accent-soft: #e7f3fd;
+    --good: #0f7b6c;
+    --good-soft: #ddedea;
+    --radius: 8px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #191919; --surface: #252525; --border: #373737; --text: #e6e6e4;
+      --muted: #9b9a97; --accent: #529cca; --accent-soft: #1f3343;
+      --good: #4dab9a; --good-soft: #1d3530;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #191919; --surface: #252525; --border: #373737; --text: #e6e6e4;
+    --muted: #9b9a97; --accent: #529cca; --accent-soft: #1f3343;
+    --good: #4dab9a; --good-soft: #1d3530;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .widget { max-width: 640px; margin: 0 auto; padding: 24px 16px; }
+  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+  h1 { font-size: 22px; line-height: 1.3; margin: 0 0 4px; font-weight: 700; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+
+  .progress { display: flex; gap: 6px; margin-bottom: 20px; }
+  .progress span { flex: 1; height: 4px; border-radius: 2px; background: var(--border); transition: background .2s; }
+  .progress span.on { background: var(--accent); }
+
+  .step { display: none; }
+  .step.active { display: block; animation: in .2s ease-out; }
+  @keyframes in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .step.active { animation: none; } }
+
+  .q { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+  .hint { color: var(--muted); font-size: 14px; margin: 0 0 14px; }
+  .options { display: grid; gap: 8px; }
+  .opt {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    width: 100%; text-align: left; padding: 12px 14px; min-height: 48px;
+    background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius);
+    font: inherit; cursor: pointer; transition: border-color .12s, background .12s;
+  }
+  .opt:hover { background: var(--surface); }
+  .opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .opt[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  .opt small { color: var(--muted); font-size: 13px; white-space: nowrap; }
+
+  .nav { display: flex; justify-content: space-between; margin-top: 16px; }
+  .link { background: none; border: 0; color: var(--muted); font: inherit; cursor: pointer; padding: 6px 0; }
+  .link:hover { color: var(--text); }
+  .link[hidden] { visibility: hidden; display: inline; }
+
+  .result-card { background: var(--good-soft); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+  .result-card .label { font-size: 13px; color: var(--good); font-weight: 600; margin: 0 0 4px; }
+  .big { font-size: clamp(26px, 7vw, 34px); font-weight: 700; line-height: 1.15; margin: 0; font-variant-numeric: tabular-nums; }
+  .big span { font-size: 16px; font-weight: 500; color: var(--muted); }
+
+  .rows { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; }
+  .row { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 12px 14px; border-top: 1px solid var(--border); }
+  .row:first-child { border-top: 0; }
+  .row b { font-weight: 600; }
+  .row .amt { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  .row p { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 13px; }
+  .bar { grid-column: 1 / -1; height: 6px; background: var(--surface); border-radius: 3px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+
+  details { border-top: 1px solid var(--border); padding-top: 12px; }
+  summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+  details ul { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
+  details li { margin-bottom: 4px; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 16px 0; }
+  .btn { background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 10px 16px; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; }
+  .btn:hover { filter: brightness(1.05); }
+</style>
+</head>
+<body>
+<div class="widget">
+  <p class="eyebrow">Savings calculator</p>
+  <h1>How much could your plant save?</h1>
+  <p class="sub">Answer four quick questions for an estimated yearly savings range.</p>
+
+  <div class="progress" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+  <div id="steps"></div>
+
+  <section class="step" id="result" aria-live="polite">
+    <div class="result-card">
+      <p class="label">Estimated yearly savings</p>
+      <p class="big" id="total"></p>
+    </div>
+    <div class="rows" id="breakdown"></div>
+    <div class="actions">
+      <a class="btn" href="#" id="cta">Talk to us about your plant</a>
+      <button class="link" id="restart" type="button">Start over</button>
+    </div>
+    <details>
+      <summary>How we calculated this</summary>
+      <ul id="assumptions"></ul>
+    </details>
+  </section>
+</div>
+
+<script>
+/* ---------------------------------------------------------------------------
+   CONFIG — every number used in the estimate lives here.
+   Source notes are on the Notion "Cost saving calculator" page.
+   Values marked ASSUMPTION fill a "No data" gap and should be confirmed.
+--------------------------------------------------------------------------- */
+const CONFIG = {
+  ctaUrl: "#", // ASSUMPTION: replace with the booking / contact link
+
+  // Typical PE range per segment (ASSUMPTION: narrower than the full segment bounds)
+  plants: {
+    small:     { label: "Small",      range: "< 5,000 PE",         pe: [2000, 5000] },
+    medium:    { label: "Medium",     range: "5,000 – 10,000 PE",   pe: [5000, 10000] },
+    large:     { label: "Large",      range: "10,000 – 100,000 PE", pe: [20000, 80000] },
+    veryLarge: { label: "Very large", range: "> 100,000 PE",        pe: [100000, 300000] },
+  },
+  m3PerPePerYear: 61,              // SE|BS: 18.3M m³ / 300k PE
+
+  // 1. Automated lab analysis
+  microscopyInternal: { hours: 1.5, perYear: 52, wage: [27, 43] },     // process-engineer wage
+  microscopyExternal: { price: [120, 320], perYear: 12 },              // Eurawasser low, Biosurf high
+  sviTest:            { hours: [0.5, 0.67], perYear: [156, 365], wage: [18, 31] }, // 3×/wk–daily, operator wage
+
+  // 2. Bulking prediction
+  bulking: {
+    costPerM3: 0.013,                                  // control-dosing cost only (lit.)
+    days:   [14, 30],                                  // ASSUMPTION: event duration
+    events: { often: [2, 3], sometimes: [1, 1], no: [0, 0], unsure: [0, 1] }, // ASSUMPTION
+  },
+
+  // 3. Chemical dosing
+  coagulant: {
+    kgPerHourPerPe: 28 / 50000,   // Goslar 28 kg/h; ASSUMPTION: Goslar ≈ 50k PE (unconfirmed)
+    price: { iron: 0.82, pax: 0.37, alum: 0.82, unsure: 0.82 }, // €/kg; alum price No data → iron used
+    reduction: [0.10, 0.20],      // ASSUMPTION: dosing reduction from closed-loop control
+  },
+};
+
+const QUESTIONS = [
+  { id: "size", q: "What size plant do you manage?", hint: "In population equivalent (PE).",
+    options: Object.entries(CONFIG.plants).map(([v, p]) => ({ v, label: p.label, meta: p.range })) },
+  { id: "lab", q: "Do you have a lab in-house?", hint: "Where microscopy and sludge tests are done today.",
+    options: [
+      { v: "yes", label: "Yes, we test on site" },
+      { v: "no",  label: "No, we send samples to an external lab" },
+    ] },
+  { id: "upsets", q: "Is your plant suffering from process upsets?", hint: "For example sludge bulking or foaming.",
+    options: [
+      { v: "often",     label: "Yes, regularly" },
+      { v: "sometimes", label: "Occasionally" },
+      { v: "no",        label: "No" },
+      { v: "unsure",    label: "Not sure" },
+    ] },
+  { id: "coag", q: "Which coagulant do you use?", hint: "For phosphorus removal.",
+    options: [
+      { v: "iron",   label: "Iron (ferric / ferrous)" },
+      { v: "pax",    label: "PAX / polyaluminium chloride" },
+      { v: "alum",   label: "Alum" },
+      { v: "none",   label: "None (biological P removal)" },
+      { v: "unsure", label: "Not sure" },
+    ] },
+];
+
+const answers = {};
+let current = 0;
+
+const eur = n => "€" + (Math.round(n / 100) * 100).toLocaleString("en-US");
+const range = ([a, b]) => a === b ? eur(a) : `${eur(a)} – ${eur(b)}`;
+
+function calculate(a) {
+  const C = CONFIG, pe = C.plants[a.size].pe;
+  const m3 = pe.map(p => p * C.m3PerPePerYear);
+  const lo = 0, hi = 1;
+
+  // 1. Lab analysis
+  const svi = [lo, hi].map(i => C.sviTest.hours[i] * C.sviTest.perYear[i] * C.sviTest.wage[i]);
+  const micro = a.lab === "yes"
+    ? [lo, hi].map(i => C.microscopyInternal.hours * C.microscopyInternal.perYear * C.microscopyInternal.wage[i])
+    : [lo, hi].map(i => C.microscopyExternal.price[i] * C.microscopyExternal.perYear);
+  const lab = [micro[0] + svi[0], micro[1] + svi[1]];
+
+  // 2. Bulking
+  const ev = C.bulking.events[a.upsets];
+  const bulk = [lo, hi].map(i => (m3[i] / 365) * C.bulking.days[i] * ev[i] * C.bulking.costPerM3);
+
+  // 3. Chemical dosing
+  const chem = a.coag === "none" ? [0, 0] : [lo, hi].map(i =>
+    C.coagulant.kgPerHourPerPe * pe[i] * 8760 * C.coagulant.price[a.coag] * C.coagulant.reduction[i]);
+
+  return [
+    { name: "Automated lab analysis", val: lab,
+      note: a.lab === "yes" ? "Replaces weekly in-house microscopy and SVI / SV30 tests."
+                            : "Replaces monthly external microscopy and SVI / SV30 tests." },
+    { name: "Bulking prediction", val: bulk,
+      note: a.upsets === "no" ? "No upsets reported, so no saving counted here."
+                              : "Earlier warning avoids the dosing needed to control a bulking event." },
+    { name: "Chemical dosing", val: chem,
+      note: a.coag === "none" ? "No coagulant dosed, so no saving counted here."
+                              : `${Math.round(C.coagulant.reduction[0]*100)}–${Math.round(C.coagulant.reduction[1]*100)}% less coagulant through dosing based on live data.` },
+  ];
+}
+
+function render() {
+  const wrap = document.getElementById("steps");
+  wrap.innerHTML = QUESTIONS.map((q, i) => `
+    <section class="step" data-i="${i}" role="group" aria-labelledby="q${i}">
+      <p class="q" id="q${i}">${q.q}</p>
+      <p class="hint">${q.hint}</p>
+      <div class="options">
+        ${q.options.map(o => `<button type="button" class="opt" data-q="${q.id}" data-v="${o.v}" aria-pressed="false">
+          <span>${o.label}</span>${o.meta ? `<small>${o.meta}</small>` : ""}</button>`).join("")}
+      </div>
+      <div class="nav"><button type="button" class="link back" ${i === 0 ? "hidden" : ""}>← Back</button><span class="eyebrow">${i + 1} of ${QUESTIONS.length}</span></div>
+    </section>`).join("");
+
+  wrap.addEventListener("click", e => {
+    const opt = e.target.closest(".opt");
+    if (opt) {
+      answers[opt.dataset.q] = opt.dataset.v;
+      opt.parentElement.querySelectorAll(".opt").forEach(b => b.setAttribute("aria-pressed", b === opt));
+      setTimeout(() => go(current + 1), 140);
+    }
+    if (e.target.closest(".back")) go(current - 1);
+  });
+  document.getElementById("restart").addEventListener("click", () => {
+    Object.keys(answers).forEach(k => delete answers[k]);
+    document.querySelectorAll(".opt").forEach(b => b.setAttribute("aria-pressed", "false"));
+    go(0);
+  });
+  document.getElementById("cta").href = CONFIG.ctaUrl;
+  go(0);
+}
+
+function go(i) {
+  current = Math.max(0, Math.min(i, QUESTIONS.length));
+  document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+  document.querySelectorAll(".progress span").forEach((s, k) => s.classList.toggle("on", k < current || current === QUESTIONS.length));
+  if (current < QUESTIONS.length) {
+    const s = document.querySelector(`.step[data-i="${current}"]`);
+    s.classList.add("active");
+    (s.querySelector('.opt[aria-pressed="true"]') || s.querySelector(".opt")).focus({ preventScroll: true });
+  } else showResult();
+}
+
+function showResult() {
+  const parts = calculate(answers);
+  const total = [0, 1].map(i => parts.reduce((s, p) => s + p.val[i], 0));
+  document.getElementById("total").innerHTML = `${range(total)} <span>/ year</span>`;
+  document.getElementById("breakdown").innerHTML = parts.map(p => `
+    <div class="row">
+      <b>${p.name}</b><span class="amt">${p.val[1] ? range(p.val) : "—"}</span>
+      <div class="bar"><i style="width:${total[1] ? (p.val[1] / total[1]) * 100 : 0}%"></i></div>
+      <p>${p.note}</p>
+    </div>`).join("");
+
+  const C = CONFIG, p = C.plants[answers.size];
+  document.getElementById("assumptions").innerHTML = [
+    `Plant size: ${p.pe[0].toLocaleString("en-US")}–${p.pe[1].toLocaleString("en-US")} PE, about ${C.m3PerPePerYear} m³ treated per PE per year.`,
+    answers.lab === "yes"
+      ? `Microscopy: ${C.microscopyInternal.hours} h per analysis, weekly, at €${C.microscopyInternal.wage[0]}–${C.microscopyInternal.wage[1]}/h.`
+      : `Microscopy: external lab at €${C.microscopyExternal.price[0]}–${C.microscopyExternal.price[1]} per analysis, monthly.`,
+    `SVI / SV30: 30–40 min per test, 3×/week to daily, at €${C.sviTest.wage[0]}–${C.sviTest.wage[1]}/h operator time.`,
+    `Bulking: €${C.bulking.costPerM3}/m³ treated during an event, ${C.bulking.days[0]}–${C.bulking.days[1]} days per event. This is the cost of controlling bulking only, so the real cost is likely higher.`,
+    answers.coag === "none" ? "Chemical dosing: not included."
+      : `Coagulant: dose scaled from a reference plant (28 kg/h), priced at €${C.coagulant.price[answers.coag]}/kg, with a ${C.coagulant.reduction[0]*100}–${C.coagulant.reduction[1]*100}% reduction.`,
+    "Data-logging time savings are not included.",
+  ].map(t => `<li>${t}</li>`).join("");
+
+  document.getElementById("result").classList.add("active");
+}
+
+render();
+</script>
+</body>
+</html>
