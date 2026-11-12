@@ -1,336 +1,295 @@
-<!DOCTYPE html>
-<html lang="en-GB">
+<!doctype html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>What Lir reads</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<title>Savings Calculator</title>
 <style>
-  /* Lir design tokens, copied from lir-design-system/tokens/tokens.css (2026-10-30).
-     Dark is the default. Light follows the OS, or force a theme with ?theme=light / ?theme=dark. */
   :root {
-    --bg-surface: #25292d;
-    --bg-subtle: #30353a;
-    --border-default: #394149;
-    --border-strong: #5a646d;
-    --text-primary: #f2f4fa;
-    --text-secondary: #cde6e9;
-    --text-muted: #8c979f;
-    --text-on-accent: #000000;
-    --accent-primary: #ebff8b;
-    --accent-primary-bg: #3a4120;
-
-    --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
-    --space-6: 24px; --space-8: 32px; --space-12: 48px;
-    --radius-md: 8px; --radius-lg: 12px; --radius-xl: 20px; --radius-full: 999px;
-
-    --font-family: "Mori", "DM Sans", system-ui, sans-serif;
-    --ease-ui: cubic-bezier(0.23, 1, 0.32, 1);
-    --duration-fast: 150ms;
-    --duration-base: 250ms;
-
-    /* Selected line: lime on dark; lime has no contrast on white, so Light uses border/strong. */
-    --selected-line: var(--accent-primary);
-    color-scheme: dark;
+    --bg: #ffffff;
+    --surface: #f7f7f5;
+    --border: #e9e9e7;
+    --text: #37352f;
+    --muted: #787774;
+    --accent: #2383e2;
+    --accent-soft: #e7f3fd;
+    --good: #0f7b6c;
+    --good-soft: #ddedea;
+    --radius: 8px;
   }
-  @media (prefers-color-scheme: light) {
-    :root:not([data-theme="dark"]) {
-      --bg-surface: #ffffff;
-      --bg-subtle: #e1f3e6;
-      --border-default: #cde6e9;
-      --border-strong: #394149;
-      --text-primary: #000000;
-      --text-secondary: #394149;
-      --text-muted: #5f6a73;
-      --accent-primary-bg: #ebff8b;
-      --selected-line: var(--border-strong);
-      color-scheme: light;
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #191919; --surface: #252525; --border: #373737; --text: #e6e6e4;
+      --muted: #9b9a97; --accent: #529cca; --accent-soft: #1f3343;
+      --good: #4dab9a; --good-soft: #1d3530;
     }
   }
-  :root[data-theme="light"] {
-    --bg-surface: #ffffff;
-    --bg-subtle: #e1f3e6;
-    --border-default: #cde6e9;
-    --border-strong: #394149;
-    --text-primary: #000000;
-    --text-secondary: #394149;
-    --text-muted: #5f6a73;
-    --accent-primary-bg: #ebff8b;
-    --selected-line: var(--border-strong);
-    color-scheme: light;
+  :root[data-theme="dark"] {
+    --bg: #191919; --surface: #252525; --border: #373737; --text: #e6e6e4;
+    --muted: #9b9a97; --accent: #529cca; --accent-soft: #1f3343;
+    --good: #4dab9a; --good-soft: #1d3530;
   }
-
   * { box-sizing: border-box; }
-  /* Transparent so the widget sits on the Notion page in either Notion theme. */
-  html, body { margin: 0; background: transparent; color: var(--text-primary); }
   body {
-    font-family: var(--font-family);
-    font: 400 14px/20px var(--font-family); /* Body/Default */
-    padding: var(--space-6) var(--space-4);
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 980px; margin: 0 auto; }
+  .widget { max-width: 640px; margin: 0 auto; padding: 24px 16px; }
+  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+  h1 { font-size: 22px; line-height: 1.3; margin: 0 0 4px; font-weight: 700; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
 
-  /* Label/Default */
-  .label { font: 500 12px/16px var(--font-family); letter-spacing: .2px; color: var(--text-muted); }
+  .progress { display: flex; gap: 6px; margin-bottom: 20px; }
+  .progress span { flex: 1; height: 4px; border-radius: 2px; background: var(--border); transition: background .2s; }
+  .progress span.on { background: var(--accent); }
 
-  .heads, .graph { display: grid; grid-template-columns: 1fr 1.05fr 1fr; column-gap: clamp(32px, 7vw, 96px); }
-  .heads { margin-bottom: var(--space-3); }
-  .heads span:nth-child(2) { text-align: center; }
-  .graph { position: relative; align-items: center; }
+  .step { display: none; }
+  .step.active { display: block; animation: in .2s ease-out; }
+  @keyframes in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .step.active { animation: none; } }
 
-  .wires { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
-  .wires path {
-    fill: none; stroke: var(--border-default); stroke-width: 1;
-    transition: stroke var(--duration-base) var(--ease-ui), stroke-width var(--duration-base) var(--ease-ui);
+  .q { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+  .hint { color: var(--muted); font-size: 14px; margin: 0 0 14px; }
+  .options { display: grid; gap: 8px; }
+  .opt {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    width: 100%; text-align: left; padding: 12px 14px; min-height: 48px;
+    background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius);
+    font: inherit; cursor: pointer; transition: border-color .12s, background .12s;
   }
-  .wires path.dashed { stroke-dasharray: 4 4; }
-  .wires path.feed { stroke: var(--border-strong); }
-  .wires path.on { stroke: var(--selected-line); stroke-width: 2; }
+  .opt:hover { background: var(--surface); }
+  .opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .opt[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  .opt small { color: var(--muted); font-size: 13px; white-space: nowrap; }
 
-  .col { display: flex; flex-direction: column; gap: var(--space-2); position: relative; z-index: 1; }
+  .nav { display: flex; justify-content: space-between; margin-top: 16px; }
+  .link { background: none; border: 0; color: var(--muted); font: inherit; cursor: pointer; padding: 6px 0; }
+  .link:hover { color: var(--text); }
+  .link[hidden] { visibility: hidden; display: inline; }
 
-  /* Sensor cards */
-  .src {
-    all: unset; box-sizing: border-box; cursor: pointer;
-    display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
-    min-height: 44px; padding: var(--space-3) 14px; border-radius: var(--radius-lg);
-    background: var(--bg-surface); border: 1px solid var(--border-default);
-    transition: border-color var(--duration-fast) var(--ease-ui), background var(--duration-fast) var(--ease-ui);
-  }
-  .src:hover { border-color: var(--border-strong); }
-  .src:focus-visible { outline: 2px solid var(--border-strong); outline-offset: 2px; }
-  .src[aria-pressed="true"] {
-    background: var(--accent-primary-bg); border-color: var(--selected-line);
-    box-shadow: inset 3px 0 0 var(--selected-line);
-  }
-  .src.later { background: transparent; border-style: dashed; }
-  .src.later[aria-pressed="true"] { background: var(--accent-primary-bg); }
-  .src b { display: block; font: 500 15px/20px var(--font-family); color: var(--text-primary); } /* Heading/H3 */
-  .src small { display: block; font: 400 12px/16px var(--font-family); color: var(--text-muted); margin-top: 2px; } /* Body/Small */
-  .src[aria-pressed="true"] small { color: var(--text-secondary); }
+  .result-card { background: var(--good-soft); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+  .result-card .label { font-size: 13px; color: var(--good); font-weight: 600; margin: 0 0 4px; }
+  .big { font-size: clamp(26px, 7vw, 34px); font-weight: 700; line-height: 1.15; margin: 0; font-variant-numeric: tabular-nums; }
+  .big span { font-size: 16px; font-weight: 500; color: var(--muted); }
 
-  .tag {
-    flex: none; white-space: nowrap;
-    font: 500 12px/16px var(--font-family); letter-spacing: .2px; color: var(--text-muted);
-  }
-  .src.lir .tag {
-    padding: 2px var(--space-2); border-radius: var(--radius-full);
-    background: var(--bg-subtle); color: var(--text-secondary);
-  }
-  .src.lir[aria-pressed="true"] .tag { background: var(--bg-surface); }
+  .rows { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; }
+  .row { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 12px 14px; border-top: 1px solid var(--border); }
+  .row:first-child { border-top: 0; }
+  .row b { font-weight: 600; }
+  .row .amt { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  .row p { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 13px; }
+  .bar { grid-column: 1 / -1; height: 6px; background: var(--surface); border-radius: 3px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
 
-  /* Lir hub */
-  .core {
-    position: relative; z-index: 1;
-    background: var(--bg-subtle); color: var(--text-primary);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-xl); padding: var(--space-6) var(--space-6) 20px;
-  }
-  .core h2 { margin: 0; text-align: center; font: 300 40px/44px var(--font-family); letter-spacing: -1px; } /* Display */
-  .core p.sub { margin: var(--space-1) 0 20px; text-align: center; font: 400 12px/16px var(--font-family); color: var(--text-muted); }
-  .rows { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
-  .rows li {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 6px 10px; border-radius: var(--radius-md); background: var(--bg-surface);
-    font: 400 13px/16px var(--font-family); color: var(--text-secondary);
-    transition: background var(--duration-base) var(--ease-ui), color var(--duration-base) var(--ease-ui);
-  }
-  .rows li.later { background: transparent; outline: 1px dashed var(--border-strong); outline-offset: -1px; color: var(--text-muted); }
-  .rows li.on { background: var(--accent-primary); color: var(--text-on-accent); font-weight: 500; outline: 0; }
-  .core .foot { margin: var(--space-4) 0 0; text-align: center; font: 400 12px/16px var(--font-family); color: var(--text-muted); }
+  details { border-top: 1px solid var(--border); padding-top: 12px; }
+  summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+  details ul { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
+  details li { margin-bottom: 4px; }
 
-  /* What your team gets */
-  .out {
-    padding: var(--space-3) 14px; border-radius: var(--radius-lg);
-    background: var(--bg-surface); border: 1px solid var(--border-default);
-  }
-  .out b { display: block; font: 500 15px/20px var(--font-family); }
-  .out small { display: block; font: 400 12px/16px var(--font-family); color: var(--text-muted); margin-top: 2px; }
-
-  /* Detail panel */
-  .panel {
-    margin-top: var(--space-6); padding: var(--space-4) 18px; border-radius: var(--radius-xl);
-    border: 1px solid var(--border-default); background: var(--bg-surface);
-    display: grid; grid-template-columns: minmax(150px, .8fr) 1fr 1fr; gap: 6px var(--space-6); min-height: 104px;
-  }
-  .panel h3 { margin: 0; font: 500 18px/24px var(--font-family); letter-spacing: -.2px; } /* Heading/H2 */
-  .panel .kind { margin-top: 2px; }
-  .panel h4 { margin: 0 0 var(--space-1); font: 500 12px/16px var(--font-family); letter-spacing: .2px; color: var(--text-muted); }
-  .panel p { margin: 0; color: var(--text-secondary); }
-  .hint { margin: 10px 0 0; text-align: center; font: 400 12px/16px var(--font-family); color: var(--text-muted); }
-
-  /* Narrow: Notion side column, phones */
-  .graph.v { grid-template-columns: 1fr; row-gap: var(--space-12); }
-  .heads.v { display: none; }
-  .graph.v .col { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
-  .graph.v .col::before {
-    content: attr(data-label); grid-column: 1 / -1;
-    font: 500 12px/16px var(--font-family); letter-spacing: .2px; color: var(--text-muted);
-  }
-  .graph.v .src { flex-direction: column; align-items: flex-start; gap: 6px; }
-  .graph.v .core { max-width: 420px; width: 100%; justify-self: center; }
-  .panel.v { grid-template-columns: 1fr; gap: var(--space-3); }
-
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 16px 0; }
+  .btn { background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 10px 16px; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; }
+  .btn:hover { filter: brightness(1.05); }
 </style>
-<script>
-  // Optional theme override for embeds: ?theme=light or ?theme=dark
-  (function () {
-    var t = new URLSearchParams(location.search).get("theme");
-    if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
-  })();
-</script>
 </head>
 <body>
-<div class="wrap">
-  <div class="heads label" id="heads" aria-hidden="true">
-    <span>What Lir reads</span><span>Lir</span><span>What your team gets</span>
-  </div>
+<div class="widget">
+  <p class="eyebrow">Savings calculator</p>
+  <h1>How much could your plant save?</h1>
+  <p class="sub">Answer four quick questions for an estimated yearly savings range.</p>
 
-  <div class="graph" id="graph">
-    <svg class="wires" id="wires" aria-hidden="true"></svg>
+  <div class="progress" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+  <div id="steps"></div>
 
-    <div class="col" id="sources" data-label="What Lir reads" role="group" aria-label="Sensors. Select one to see what it covers."></div>
-
-    <div class="core" id="core">
-      <h2>Lir</h2>
-      <p class="sub">Reads every image alongside your process data</p>
-      <ul class="rows" id="rows"></ul>
-      <p class="foot">Lir recommends, your operators decide</p>
+  <section class="step" id="result" aria-live="polite">
+    <div class="result-card">
+      <p class="label">Estimated yearly savings</p>
+      <p class="big" id="total"></p>
     </div>
-
-    <div class="col" id="outputs" data-label="What your team gets"></div>
-  </div>
-
-  <div class="panel" id="panel" aria-live="polite"></div>
-  <p class="hint">Select a sensor to see what it covers.</p>
+    <div class="rows" id="breakdown"></div>
+    <div class="actions">
+      <a class="btn" href="#" id="cta">Talk to us about your plant</a>
+      <button class="link" id="restart" type="button">Start over</button>
+    </div>
+    <details>
+      <summary>How we calculated this</summary>
+      <ul id="assumptions"></ul>
+    </details>
+  </section>
 </div>
 
 <script>
-const SENSORS = [
-  {
-    id: "microscope", name: "Inline microscope", sub: "Images the microbes in your tank",
-    tag: "Lir sensor", row: "Microbe images", cls: "lir",
-    covers: "The biology in your aeration tank. It samples the tank automatically and captures up to 60,000 images an hour, including the thread-like filamentous bacteria behind bulking.",
-    uses: "The images are the basis of each tank’s biological health score and of alerts on early signs of bulking."
+/* ---------------------------------------------------------------------------
+   CONFIG — every number used in the estimate lives here.
+   Source notes are on the Notion "Cost saving calculator" page.
+   Values marked ASSUMPTION fill a "No data" gap and should be confirmed.
+--------------------------------------------------------------------------- */
+const CONFIG = {
+  ctaUrl: "#", // ASSUMPTION: replace with the booking / contact link
+
+  // Typical PE range per segment (ASSUMPTION: narrower than the full segment bounds)
+  plants: {
+    small:     { label: "Small",      range: "< 5,000 PE",         pe: [2000, 5000] },
+    medium:    { label: "Medium",     range: "5,000 – 10,000 PE",   pe: [5000, 10000] },
+    large:     { label: "Large",      range: "10,000 – 100,000 PE", pe: [20000, 80000] },
+    veryLarge: { label: "Very large", range: "> 100,000 PE",        pe: [100000, 300000] },
   },
-  {
-    id: "do", name: "Dissolved oxygen", sub: "Oxygen available to the microbes",
-    tag: "Your probe", row: "Dissolved oxygen",
-    covers: "How much oxygen is dissolved in the tank, which is what the microbes rely on to treat your wastewater.",
-    uses: "Lir reads it alongside every image, so changes in the biology are seen in the context of your process."
+  m3PerPePerYear: 61,              // SE|BS: 18.3M m³ / 300k PE
+
+  // 1. Automated lab analysis
+  microscopyInternal: { hours: 1.5, perYear: 52, wage: [27, 43] },     // process-engineer wage
+  microscopyExternal: { price: [120, 320], perYear: 12 },              // Eurawasser low, Biosurf high
+  sviTest:            { hours: [0.5, 0.67], perYear: [156, 365], wage: [18, 31] }, // 3×/wk–daily, operator wage
+
+  // 2. Bulking prediction
+  bulking: {
+    costPerM3: 0.013,                                  // control-dosing cost only (lit.)
+    days:   [14, 30],                                  // ASSUMPTION: event duration
+    events: { often: [2, 3], sometimes: [1, 1], no: [0, 0], unsure: [0, 1] }, // ASSUMPTION
   },
-  {
-    id: "nh4", name: "Ammonia", sub: "A sign of how nitrification is going",
-    tag: "Your probe", row: "Ammonia",
-    covers: "Ammonia levels in the tank, an indicator of how well nitrification is working.",
-    uses: "Lir reads it alongside every image, so changes in the biology are seen in the context of your process."
+
+  // 3. Chemical dosing
+  coagulant: {
+    kgPerHourPerPe: 28 / 50000,   // Goslar 28 kg/h; ASSUMPTION: Goslar ≈ 50k PE (unconfirmed)
+    price: { iron: 0.82, pax: 0.37, alum: 0.82, unsure: 0.82 }, // €/kg; alum price No data → iron used
+    reduction: [0.10, 0.20],      // ASSUMPTION: dosing reduction from closed-loop control
   },
-  {
-    id: "temp", name: "Temperature", sub: "How fast the microbes work",
-    tag: "Your probe", row: "Temperature",
-    covers: "Tank temperature, which changes how quickly the microbes grow and work.",
-    uses: "Lir reads it alongside every image, so changes in the biology are seen in the context of your process."
-  },
-  {
-    id: "scada", name: "Plant SCADA", sub: "Your control system",
-    tag: "Mid-2027", row: "SCADA, from mid-2027", cls: "later",
-    covers: "Your plant’s control system and the process data it already records.",
-    uses: "Connection to your plant’s SCADA arrives in mid-2027. Until then, Lir works alongside your existing probes."
-  }
+};
+
+const QUESTIONS = [
+  { id: "size", q: "What size plant do you manage?", hint: "In population equivalent (PE).",
+    options: Object.entries(CONFIG.plants).map(([v, p]) => ({ v, label: p.label, meta: p.range })) },
+  { id: "lab", q: "Do you have a lab in-house?", hint: "Where microscopy and sludge tests are done today.",
+    options: [
+      { v: "yes", label: "Yes, we test on site" },
+      { v: "no",  label: "No, we send samples to an external lab" },
+    ] },
+  { id: "upsets", q: "Is your plant suffering from process upsets?", hint: "For example sludge bulking or foaming.",
+    options: [
+      { v: "often",     label: "Yes, regularly" },
+      { v: "sometimes", label: "Occasionally" },
+      { v: "no",        label: "No" },
+      { v: "unsure",    label: "Not sure" },
+    ] },
+  { id: "coag", q: "Which coagulant do you use?", hint: "For phosphorus removal.",
+    options: [
+      { v: "iron",   label: "Iron (ferric / ferrous)" },
+      { v: "pax",    label: "PAX / polyaluminium chloride" },
+      { v: "alum",   label: "Alum" },
+      { v: "none",   label: "None (biological P removal)" },
+      { v: "unsure", label: "Not sure" },
+    ] },
 ];
 
-const OUTPUTS = [
-  { name: "Health score", sub: "For each tank" },
-  { name: "Early alerts", sub: "On early signs of bulking" },
-  { name: "Recommendations", sub: "On what to check" },
-  { name: "Microscope checks", sub: "At your desk, not in the lab" }
-];
+const answers = {};
+let current = 0;
 
-const $ = id => document.getElementById(id);
-const graph = $("graph"), wires = $("wires"), panel = $("panel");
-let selected = "microscope";
+const eur = n => "€" + (Math.round(n / 100) * 100).toLocaleString("en-US");
+const range = ([a, b]) => a === b ? eur(a) : `${eur(a)} – ${eur(b)}`;
 
-SENSORS.forEach(s => {
-  const b = document.createElement("button");
-  b.className = "src" + (s.cls ? " " + s.cls : "");
-  b.dataset.id = s.id;
-  b.setAttribute("aria-pressed", "false");
-  b.setAttribute("aria-controls", "panel");
-  b.innerHTML = `<span><b>${s.name}</b><small>${s.sub}</small></span><span class="tag">${s.tag}</span>`;
-  b.addEventListener("click", () => select(selected === s.id ? null : s.id));
-  $("sources").appendChild(b);
+function calculate(a) {
+  const C = CONFIG, pe = C.plants[a.size].pe;
+  const m3 = pe.map(p => p * C.m3PerPePerYear);
+  const lo = 0, hi = 1;
 
-  const li = document.createElement("li");
-  li.dataset.id = s.id;
-  if (s.cls === "later") li.className = "later";
-  li.innerHTML = `<span>${s.row}</span>`;
-  $("rows").appendChild(li);
-});
+  // 1. Lab analysis
+  const svi = [lo, hi].map(i => C.sviTest.hours[i] * C.sviTest.perYear[i] * C.sviTest.wage[i]);
+  const micro = a.lab === "yes"
+    ? [lo, hi].map(i => C.microscopyInternal.hours * C.microscopyInternal.perYear * C.microscopyInternal.wage[i])
+    : [lo, hi].map(i => C.microscopyExternal.price[i] * C.microscopyExternal.perYear);
+  const lab = [micro[0] + svi[0], micro[1] + svi[1]];
 
-OUTPUTS.forEach(o => {
-  const d = document.createElement("div");
-  d.className = "out";
-  d.innerHTML = `<b>${o.name}</b><small>${o.sub}</small>`;
-  $("outputs").appendChild(d);
-});
+  // 2. Bulking
+  const ev = C.bulking.events[a.upsets];
+  const bulk = [lo, hi].map(i => (m3[i] / 365) * C.bulking.days[i] * ev[i] * C.bulking.costPerM3);
 
-function select(id) {
-  selected = id;
-  document.querySelectorAll(".src").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.id === id)));
-  document.querySelectorAll(".rows li").forEach(li => li.classList.toggle("on", li.dataset.id === id));
-  wires.querySelectorAll("path").forEach(p => {
-    p.classList.toggle("on", p.dataset.src === id);
-    p.classList.toggle("feed", !!id && p.dataset.out === "1");
-  });
-  const s = SENSORS.find(x => x.id === id);
-  panel.innerHTML = s
-    ? `<div><h3>${s.name}</h3><div class="kind label">${s.tag}</div></div>
-       <div><h4>What it covers</h4><p>${s.covers}</p></div>
-       <div><h4>How Lir uses it</h4><p>${s.uses}</p></div>`
-    : `<div><h3>Five inputs, one view</h3></div>
-       <div><p>Lir combines its own images of your microbes with the process data your plant already collects.</p></div>
-       <div><p>Select a sensor to see what it covers.</p></div>`;
+  // 3. Chemical dosing
+  const chem = a.coag === "none" ? [0, 0] : [lo, hi].map(i =>
+    C.coagulant.kgPerHourPerPe * pe[i] * 8760 * C.coagulant.price[a.coag] * C.coagulant.reduction[i]);
+
+  return [
+    { name: "Automated lab analysis", val: lab,
+      note: a.lab === "yes" ? "Replaces weekly in-house microscopy and SVI / SV30 tests."
+                            : "Replaces monthly external microscopy and SVI / SV30 tests." },
+    { name: "Bulking prediction", val: bulk,
+      note: a.upsets === "no" ? "No upsets reported, so no saving counted here."
+                              : "Earlier warning avoids the dosing needed to control a bulking event." },
+    { name: "Chemical dosing", val: chem,
+      note: a.coag === "none" ? "No coagulant dosed, so no saving counted here."
+                              : `${Math.round(C.coagulant.reduction[0]*100)}–${Math.round(C.coagulant.reduction[1]*100)}% less coagulant through dosing based on live data.` },
+  ];
 }
 
-function curve(x1, y1, x2, y2, vertical) {
-  if (vertical) {
-    const d = (y2 - y1) / 2;
-    return `M${x1},${y1} C${x1},${y1 + d} ${x2},${y2 - d} ${x2},${y2}`;
-  }
-  const d = (x2 - x1) / 2;
-  return `M${x1},${y1} C${x1 + d},${y1} ${x2 - d},${y2} ${x2},${y2}`;
+function render() {
+  const wrap = document.getElementById("steps");
+  wrap.innerHTML = QUESTIONS.map((q, i) => `
+    <section class="step" data-i="${i}" role="group" aria-labelledby="q${i}">
+      <p class="q" id="q${i}">${q.q}</p>
+      <p class="hint">${q.hint}</p>
+      <div class="options">
+        ${q.options.map(o => `<button type="button" class="opt" data-q="${q.id}" data-v="${o.v}" aria-pressed="false">
+          <span>${o.label}</span>${o.meta ? `<small>${o.meta}</small>` : ""}</button>`).join("")}
+      </div>
+      <div class="nav"><button type="button" class="link back" ${i === 0 ? "hidden" : ""}>← Back</button><span class="eyebrow">${i + 1} of ${QUESTIONS.length}</span></div>
+    </section>`).join("");
+
+  wrap.addEventListener("click", e => {
+    const opt = e.target.closest(".opt");
+    if (opt) {
+      answers[opt.dataset.q] = opt.dataset.v;
+      opt.parentElement.querySelectorAll(".opt").forEach(b => b.setAttribute("aria-pressed", b === opt));
+      setTimeout(() => go(current + 1), 140);
+    }
+    if (e.target.closest(".back")) go(current - 1);
+  });
+  document.getElementById("restart").addEventListener("click", () => {
+    Object.keys(answers).forEach(k => delete answers[k]);
+    document.querySelectorAll(".opt").forEach(b => b.setAttribute("aria-pressed", "false"));
+    go(0);
+  });
+  document.getElementById("cta").href = CONFIG.ctaUrl;
+  go(0);
 }
 
-function layout() {
-  const vertical = graph.clientWidth < 640;
-  [graph, $("heads"), panel].forEach(el => el.classList.toggle("v", vertical));
-
-  const g = graph.getBoundingClientRect();
-  const r = el => { const b = el.getBoundingClientRect(); return { l: b.left - g.left, r: b.right - g.left, t: b.top - g.top, b: b.bottom - g.top, x: b.left - g.left + b.width / 2, y: b.top - g.top + b.height / 2 }; };
-  const core = r($("core"));
-  let html = "";
-
-  document.querySelectorAll(".src").forEach(el => {
-    const s = r(el), id = el.dataset.id, dashed = el.classList.contains("later") ? "dashed" : "";
-    const d = vertical ? curve(s.x, s.b, core.x, core.t, true) : curve(s.r, s.y, core.l, core.y, false);
-    html += `<path class="${dashed}" data-src="${id}" d="${d}"/>`;
-  });
-  document.querySelectorAll(".out").forEach(el => {
-    const o = r(el);
-    const d = vertical ? curve(core.x, core.b, o.x, o.t, true) : curve(core.r, core.y, o.l, o.y, false);
-    html += `<path data-out="1" d="${d}"/>`;
-  });
-  wires.innerHTML = html;
-  select(selected);
+function go(i) {
+  current = Math.max(0, Math.min(i, QUESTIONS.length));
+  document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+  document.querySelectorAll(".progress span").forEach((s, k) => s.classList.toggle("on", k < current || current === QUESTIONS.length));
+  if (current < QUESTIONS.length) {
+    const s = document.querySelector(`.step[data-i="${current}"]`);
+    s.classList.add("active");
+    (s.querySelector('.opt[aria-pressed="true"]') || s.querySelector(".opt")).focus({ preventScroll: true });
+  } else showResult();
 }
 
-new ResizeObserver(layout).observe(graph);
-if (document.fonts) document.fonts.ready.then(layout);
-layout();
+function showResult() {
+  const parts = calculate(answers);
+  const total = [0, 1].map(i => parts.reduce((s, p) => s + p.val[i], 0));
+  document.getElementById("total").innerHTML = `${range(total)} <span>/ year</span>`;
+  document.getElementById("breakdown").innerHTML = parts.map(p => `
+    <div class="row">
+      <b>${p.name}</b><span class="amt">${p.val[1] ? range(p.val) : "—"}</span>
+      <div class="bar"><i style="width:${total[1] ? (p.val[1] / total[1]) * 100 : 0}%"></i></div>
+      <p>${p.note}</p>
+    </div>`).join("");
+
+  const C = CONFIG, p = C.plants[answers.size];
+  document.getElementById("assumptions").innerHTML = [
+    `Plant size: ${p.pe[0].toLocaleString("en-US")}–${p.pe[1].toLocaleString("en-US")} PE, about ${C.m3PerPePerYear} m³ treated per PE per year.`,
+    answers.lab === "yes"
+      ? `Microscopy: ${C.microscopyInternal.hours} h per analysis, weekly, at €${C.microscopyInternal.wage[0]}–${C.microscopyInternal.wage[1]}/h.`
+      : `Microscopy: external lab at €${C.microscopyExternal.price[0]}–${C.microscopyExternal.price[1]} per analysis, monthly.`,
+    `SVI / SV30: 30–40 min per test, 3×/week to daily, at €${C.sviTest.wage[0]}–${C.sviTest.wage[1]}/h operator time.`,
+    `Bulking: €${C.bulking.costPerM3}/m³ treated during an event, ${C.bulking.days[0]}–${C.bulking.days[1]} days per event. This is the cost of controlling bulking only, so the real cost is likely higher.`,
+    answers.coag === "none" ? "Chemical dosing: not included."
+      : `Coagulant: dose scaled from a reference plant (28 kg/h), priced at €${C.coagulant.price[answers.coag]}/kg, with a ${C.coagulant.reduction[0]*100}–${C.coagulant.reduction[1]*100}% reduction.`,
+    "Data-logging time savings are not included.",
+  ].map(t => `<li>${t}</li>`).join("");
+
+  document.getElementById("result").classList.add("active");
+}
+
+render();
 </script>
 </body>
 </html>
