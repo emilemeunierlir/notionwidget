@@ -108,6 +108,17 @@
   .hint { margin: 0; padding: 6px var(--space-4); border: 1px solid var(--border-default); border-radius: var(--radius-xl);
     color: var(--text-muted); }
 
+  /* Unit switch: Filter segmented control (product/components/observations/filter-segmented-control.md) */
+  .seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--radius-full); background: var(--bg-surface); }
+  .seg button {
+    all: unset; cursor: pointer; height: 28px; box-sizing: border-box; padding: 6px var(--space-3);
+    border-radius: var(--radius-full); color: var(--text-muted); font: var(--font-label-default); letter-spacing: 0.2px;
+    transition: background-color var(--duration-fast) var(--ease-ui), color var(--duration-fast) var(--ease-ui);
+  }
+  .seg button:hover { color: var(--text-primary); }
+  .seg button[aria-pressed="true"] { background: var(--bg-canvas); color: var(--text-primary); }
+  .seg button:focus-visible { outline: 2px solid var(--border-strong); outline-offset: 2px; }
+
   .options { display: grid; gap: var(--space-2); }
   .opt {
     display: flex; align-items: center; gap: var(--space-2);
@@ -230,13 +241,17 @@
 --------------------------------------------------------------------------- */
 const CONFIG = {
   // Typical PE range per segment (ASSUMPTION: narrower than the full segment bounds)
+  // m3 labels: the same segments in m³/day, converted at m3PerPePerYear (61 / 365 ≈ 0.167 m³/PE/day), rounded.
   plants: {
-    medium:    { range: "5,000 – 10,000 PE",    pe: [5000, 10000] },
-    large:     { range: "10,000 – 100,000 PE",  pe: [20000, 80000] },
-    veryLarge: { range: "100,000 – 500,000 PE", pe: [100000, 300000] },
-    huge:      { range: "> 500,000 PE",         pe: [500000, 1000000] }, // ASSUMPTION: upper bound
+    medium:    { range: "5,000 – 10,000 PE",    m3: "800 – 1,700 m³/day",       pe: [5000, 10000] },
+    large:     { range: "10,000 – 100,000 PE",  m3: "1,700 – 17,000 m³/day",    pe: [20000, 80000] },
+    veryLarge: { range: "100,000 – 500,000 PE", m3: "17,000 – 85,000 m³/day",   pe: [100000, 300000] },
+    huge:      { range: "> 500,000 PE",         m3: "> 85,000 m³/day",          pe: [500000, 1000000] }, // ASSUMPTION: upper bound
   },
   m3PerPePerYear: 61,              // SE|BS: 18.3M m³ / 300k PE
+  // Plant size unit shown first. Industrial sites rarely use PE, so m³/day is the default.
+  // Force one in the embed link with ?unit=pe or ?unit=m3.
+  defaultUnit: "m3",
 
   // 1. Automated lab analysis
   microscopyInternal: { hours: 1.5, perYear: 52, wage: [27, 43] },     // process-engineer wage
@@ -259,8 +274,8 @@ const CONFIG = {
 };
 
 const QUESTIONS = [
-  { id: "size", q: "What size plant do you manage?", hint: "In population equivalent (PE)", other: true,
-    options: Object.entries(CONFIG.plants).map(([v, p]) => ({ v, label: p.range })) },
+  { id: "size", q: "What size plant do you manage?", units: true, other: true,
+    options: Object.entries(CONFIG.plants).map(([v, p]) => ({ v, label: p.range, m3: p.m3 })) },
   { id: "lab", q: "Do you have a lab in-house?", hint: "Where microscopy and sludge tests are done today",
     options: [
       { v: "yes", label: "Yes, we test on site" },
@@ -285,6 +300,13 @@ const QUESTIONS = [
 
 const answers = {};
 let current = 0;
+const UNITS = {
+  m3: { short: "m³/day", placeholder: "m³ per day", aria: "Other plant size, in m³ per day" },
+  pe: { short: "PE",     placeholder: "Number of PE", aria: "Other plant size, in population equivalent (PE)" },
+};
+const unitParam = new URLSearchParams(location.search).get("unit");
+let unit = UNITS[unitParam] ? unitParam : CONFIG.defaultUnit;
+const m3DayToPe = m3 => m3 * 365 / CONFIG.m3PerPePerYear;
 
 const fmt = n => n.toLocaleString("en-US");
 const eur = n => "€" + fmt(Math.round(n / 100) * 100);
@@ -328,12 +350,18 @@ function render() {
     <section class="step" data-i="${i}" role="group" aria-labelledby="q${i}">
       <div class="question">
         <p class="q" id="q${i}">${q.q}</p>
-        <p class="hint">${q.hint}</p>
+        ${q.units
+          ? `<div class="seg" role="group" aria-label="Plant size unit">
+              <button type="button" data-unit="m3" aria-pressed="${unit === "m3"}">m³/day</button>
+              <button type="button" data-unit="pe" aria-pressed="${unit === "pe"}">PE</button>
+            </div>`
+          : `<p class="hint">${q.hint}</p>`}
       </div>
       <div class="options">
-        ${q.options.map(o => `<button type="button" class="opt" data-q="${q.id}" data-v="${o.v}" aria-pressed="false">${o.label}</button>`).join("")}
+        ${q.options.map(o => `<button type="button" class="opt" data-q="${q.id}" data-v="${o.v}" aria-pressed="false"
+          ${o.m3 ? `data-pe="${o.label}" data-m3="${o.m3}"` : ""}>${o.m3 && unit === "m3" ? o.m3 : o.label}</button>`).join("")}
         ${q.other ? `<label class="opt other" data-q="${q.id}" data-v="other" aria-pressed="false">
-          <span>Other:</span><input type="text" inputmode="numeric" placeholder="Number of PE" aria-label="Other plant size, in PE">
+          <span>Other:</span><input type="text" inputmode="numeric" placeholder="${UNITS[unit].placeholder}" aria-label="${UNITS[unit].aria}">
           <button type="button" hidden>Next →</button></label>` : ""}
       </div>
       <div class="nav"><button type="button" class="link back" ${i === 0 ? "hidden" : ""}>← Back</button><span class="count">${i + 1} of ${QUESTIONS.length}</span></div>
@@ -344,7 +372,18 @@ function render() {
     opt.parentElement.querySelectorAll(".opt").forEach(b => b.setAttribute("aria-pressed", b === opt));
   };
 
+  // Unit switch: relabels the size options and the Other field. The maths stays in PE.
+  const setUnit = u => {
+    unit = u;
+    wrap.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.unit === u));
+    wrap.querySelectorAll("button.opt[data-m3]").forEach(b => { b.textContent = u === "m3" ? b.dataset.m3 : b.dataset.pe; });
+    const inp = wrap.querySelector(".opt.other input");
+    if (inp) { inp.placeholder = UNITS[u].placeholder; inp.setAttribute("aria-label", UNITS[u].aria); }
+  };
+
   wrap.addEventListener("click", e => {
+    const seg = e.target.closest(".seg button");
+    if (seg) { setUnit(seg.dataset.unit); return; }
     const opt = e.target.closest("button.opt");
     if (opt) { pick(opt, opt.dataset.v); setTimeout(() => go(current + 1), 140); }
     if (e.target.closest(".back")) go(current - 1);
@@ -358,7 +397,9 @@ function render() {
     const submit = () => {
       const n = value();
       if (!(n > 0)) { input.focus(); return; }
-      answers.pe = n; pick(other, "other"); go(current + 1);
+      answers.otherValue = n; answers.otherUnit = unit;
+      answers.pe = unit === "m3" ? Math.round(m3DayToPe(n)) : n;
+      pick(other, "other"); go(current + 1);
     };
     input.addEventListener("input", () => { next.hidden = !(value() > 0); });
     input.addEventListener("keydown", e => { if (e.key === "Enter") submit(); });
@@ -395,10 +436,14 @@ function showResult() {
     <div class="row"><span>${p.name}</span><span class="amt${p.val[1] ? "" : " none"}">${p.val[1] ? range(p.val) : "—"}</span></div>`).join("");
 
   const C = CONFIG, pe = plantPe(answers);
+  const peText = pe[0] === pe[1] ? `${fmt(pe[0])} PE` : `${fmt(pe[0])}–${fmt(pe[1])} PE`;
+  const m3Day = pe.map(p => Math.round(p * C.m3PerPePerYear / 365));
+  const m3Text = answers.size === "other" && answers.otherUnit === "m3" ? `${fmt(answers.otherValue)} m³/day`
+    : m3Day[0] === m3Day[1] ? `${fmt(m3Day[0])} m³/day` : `${fmt(m3Day[0])}–${fmt(m3Day[1])} m³/day`;
   document.getElementById("assumptions").innerHTML = [
-    pe[0] === pe[1]
-      ? `Plant size: ${fmt(pe[0])} PE, about ${C.m3PerPePerYear} m³ treated per PE per year.`
-      : `Plant size: ${fmt(pe[0])}–${fmt(pe[1])} PE, about ${C.m3PerPePerYear} m³ treated per PE per year.`,
+    unit === "m3"
+      ? `Plant size: ${m3Text}, counted as ${peText} at ${C.m3PerPePerYear} m³ treated per PE per year.`
+      : `Plant size: ${peText}, about ${C.m3PerPePerYear} m³ treated per PE per year.`,
     answers.lab === "yes"
       ? `Microscopy: ${C.microscopyInternal.hours} h per analysis, weekly, at €${C.microscopyInternal.wage[0]}–${C.microscopyInternal.wage[1]}/h.`
       : `Microscopy: external lab at €${C.microscopyExternal.price[0]}–${C.microscopyExternal.price[1]} per analysis, monthly.`,
