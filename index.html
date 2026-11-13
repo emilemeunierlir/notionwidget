@@ -3,118 +3,222 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Savings Calculator</title>
+<title>Savings calculator · Lir Labs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
 <style>
+  /* Lir design tokens (lir-design-system/tokens/tokens.css, 2026-10-30).
+     Layout follows Figma "lir_notion-widgets_calculator-and-connectors_2026-11-13".
+     Dark is the default. Light follows the OS, or force a theme with ?theme=light / ?theme=dark. */
   :root {
-    --bg: #ffffff;
-    --surface: #f7f7f5;
-    --border: #e9e9e7;
-    --text: #37352f;
-    --muted: #787774;
-    --accent: #2383e2;
-    --accent-soft: #e7f3fd;
-    --good: #0f7b6c;
-    --good-soft: #ddedea;
-    --radius: 8px;
+    --bg-canvas: #141719;
+    --bg-surface: #25292d;
+    --bg-subtle: #30353a;
+    --border-default: #394149;
+    --border-strong: #5a646d;
+    --text-primary: #f2f4fa;
+    --text-secondary: #cde6e9;
+    --text-muted: #8c979f;
+
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-12: 48px;
+    --radius-md: 8px;
+    --radius-xl: 20px;
+    --radius-full: 999px;
+
+    --font-family: "Mori", "DM Sans", system-ui, sans-serif;
+    --font-heading-h1: 500 24px/30px var(--font-family);
+    --font-heading-h2: 500 18px/24px var(--font-family);
+    --font-heading-h3: 500 15px/20px var(--font-family);
+    --font-body-default: 400 14px/20px var(--font-family);
+    --font-body-small: 400 12px/16px var(--font-family);
+    --font-label-default: 500 12px/16px var(--font-family);
+    --font-data-big-number: 300 44px/44px var(--font-family);
+
+    --ease-ui: cubic-bezier(0.23, 1, 0.32, 1);
+    --duration-fast: 150ms;
+    --duration-base: 250ms;
+    color-scheme: dark;
   }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #191919; --surface: #252525; --border: #373737; --text: #e6e6e4;
-      --muted: #9b9a97; --accent: #529cca; --accent-soft: #1f3343;
-      --good: #4dab9a; --good-soft: #1d3530;
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg-canvas: #f4f7f5;
+      --bg-surface: #ffffff;
+      --bg-subtle: #e1f3e6;
+      --border-default: #cde6e9;
+      --border-strong: #394149;
+      --text-primary: #000000;
+      --text-secondary: #394149;
+      --text-muted: #5f6a73;
+      color-scheme: light;
     }
   }
-  :root[data-theme="dark"] {
-    --bg: #191919; --surface: #252525; --border: #373737; --text: #e6e6e4;
-    --muted: #9b9a97; --accent: #529cca; --accent-soft: #1f3343;
-    --good: #4dab9a; --good-soft: #1d3530;
+  :root[data-theme="light"] {
+    --bg-canvas: #f4f7f5;
+    --bg-surface: #ffffff;
+    --bg-subtle: #e1f3e6;
+    --border-default: #cde6e9;
+    --border-strong: #394149;
+    --text-primary: #000000;
+    --text-secondary: #394149;
+    --text-muted: #5f6a73;
+    color-scheme: light;
   }
+
   * { box-sizing: border-box; }
   body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font: 15px/1.5 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    margin: 0; background: var(--bg-canvas); color: var(--text-primary);
+    font: var(--font-body-default);
     -webkit-font-smoothing: antialiased;
   }
-  .widget { max-width: 640px; margin: 0 auto; padding: 24px 16px; }
-  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
-  h1 { font-size: 22px; line-height: 1.3; margin: 0 0 4px; font-weight: 700; }
-  .sub { color: var(--muted); margin: 0 0 20px; }
+  .widget { max-width: 640px; margin: 0 auto; padding: var(--space-6) var(--space-4); }
 
-  .progress { display: flex; gap: 6px; margin-bottom: 20px; }
-  .progress span { flex: 1; height: 4px; border-radius: 2px; background: var(--border); transition: background .2s; }
-  .progress span.on { background: var(--accent); }
+  /* Inverted surface (selected option, total card): text/primary fill with bg/canvas text,
+     so it flips with the theme. */
+  .inverted { background: var(--text-primary); color: var(--bg-canvas); }
 
+  /* Header: the title on questions, the intro line on the result */
+  h1 { font: var(--font-heading-h1); letter-spacing: -0.5px; margin: 0; }
+  .sub { color: var(--text-muted); margin: 0; }
+  .header { margin-bottom: var(--space-12); }
+  .widget.done .header { margin-bottom: var(--space-6); }
+  .widget.done h1, .widget:not(.done) .sub { display: none; }
+
+  /* Progress */
+  .progress { display: flex; gap: var(--space-1); margin-bottom: var(--space-12); }
+  .widget.done .progress { margin-bottom: var(--space-6); }
+  .progress span { flex: 1; height: 4px; border-radius: var(--radius-full); background: var(--bg-subtle);
+    transition: background-color var(--duration-base) var(--ease-ui); }
+  .progress span.on { background: var(--text-secondary); }
+
+  /* Steps */
   .step { display: none; }
-  .step.active { display: block; animation: in .2s ease-out; }
+  .step.active { display: block; animation: in var(--duration-base) var(--ease-ui); }
   @keyframes in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-  @media (prefers-reduced-motion: reduce) { .step.active { animation: none; } }
 
-  .q { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
-  .hint { color: var(--muted); font-size: 14px; margin: 0 0 14px; }
-  .options { display: grid; gap: 8px; }
+  .question { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+    gap: var(--space-3); margin-bottom: var(--space-8); }
+  .q { font: var(--font-heading-h2); letter-spacing: -0.2px; margin: 0; }
+  .hint { margin: 0; padding: 6px var(--space-4); border: 1px solid var(--border-default); border-radius: var(--radius-xl);
+    color: var(--text-muted); }
+
+  .options { display: grid; gap: var(--space-2); }
   .opt {
-    display: flex; justify-content: space-between; align-items: center; gap: 12px;
-    width: 100%; text-align: left; padding: 12px 14px; min-height: 48px;
-    background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius);
-    font: inherit; cursor: pointer; transition: border-color .12s, background .12s;
+    display: flex; align-items: center; gap: var(--space-2);
+    width: 100%; text-align: left; padding: var(--space-3) var(--space-4); min-height: 48px;
+    background: var(--bg-canvas); color: var(--text-muted);
+    border: 1.5px solid var(--border-default); border-radius: var(--radius-md);
+    font: var(--font-body-small); cursor: pointer;
+    transition: background-color var(--duration-fast) var(--ease-ui), color var(--duration-fast) var(--ease-ui),
+      border-color var(--duration-fast) var(--ease-ui);
   }
-  .opt:hover { background: var(--surface); }
-  .opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .opt[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
-  .opt small { color: var(--muted); font-size: 13px; white-space: nowrap; }
+  .opt:hover { border-color: var(--border-strong); color: var(--text-primary); }
+  .opt:focus-visible, .opt.other:focus-within { outline: 2px solid var(--border-strong); outline-offset: 2px; }
+  .opt[aria-pressed="true"] { background: var(--text-primary); color: var(--bg-canvas); border-color: var(--text-primary); }
+  .opt.other { cursor: text; }
+  .opt.other input {
+    flex: 1; min-width: 0; border: 0; background: none; color: inherit; font: inherit; padding: 0; outline: none;
+    font-variant-numeric: tabular-nums;
+  }
+  .opt.other input::placeholder { color: var(--text-muted); }
+  .opt.other button { all: unset; cursor: pointer; font: var(--font-label-default); letter-spacing: 0.2px; padding: var(--space-1) 0; }
+  .opt.other button[hidden] { display: none; }
 
-  .nav { display: flex; justify-content: space-between; margin-top: 16px; }
-  .link { background: none; border: 0; color: var(--muted); font: inherit; cursor: pointer; padding: 6px 0; }
-  .link:hover { color: var(--text); }
+  .nav { display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-8); min-height: 44px; }
+  .count { font: var(--font-label-default); letter-spacing: 0.2px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .link { background: none; border: 0; color: var(--text-muted); font: var(--font-label-default); letter-spacing: 0.2px;
+    cursor: pointer; padding: var(--space-3) 0; transition: color var(--duration-fast) var(--ease-ui); }
+  .link:hover { color: var(--text-primary); }
+  .link:focus-visible { outline: 2px solid var(--border-strong); outline-offset: 2px; border-radius: var(--radius-md); }
   .link[hidden] { visibility: hidden; display: inline; }
 
-  .result-card { background: var(--good-soft); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
-  .result-card .label { font-size: 13px; color: var(--good); font-weight: 600; margin: 0 0 4px; }
-  .big { font-size: clamp(26px, 7vw, 34px); font-weight: 700; line-height: 1.15; margin: 0; font-variant-numeric: tabular-nums; }
-  .big span { font-size: 16px; font-weight: 500; color: var(--muted); }
-
-  .rows { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; }
-  .row { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 12px 14px; border-top: 1px solid var(--border); }
+  /* Result */
+  .result > * + * { margin-top: var(--space-3); }
+  .breakdown { border: 1.5px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-canvas); }
+  .row { display: flex; justify-content: space-between; gap: var(--space-3); padding: var(--space-4) 18px;
+    border-top: 1px solid var(--border-default); font: var(--font-heading-h3); }
   .row:first-child { border-top: 0; }
-  .row b { font-weight: 600; }
-  .row .amt { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
-  .row p { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 13px; }
-  .bar { grid-column: 1 / -1; height: 6px; background: var(--surface); border-radius: 3px; overflow: hidden; }
-  .bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+  .row .amt { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .row .amt.none { color: var(--text-muted); }
 
-  details { border-top: 1px solid var(--border); padding-top: 12px; }
-  summary { cursor: pointer; color: var(--muted); font-size: 14px; }
-  details ul { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
-  details li { margin-bottom: 4px; }
+  .total-card { border-radius: var(--radius-md); padding: var(--space-4) 18px 18px; }
+  .total-card .label { font: var(--font-label-default); letter-spacing: 0.2px; margin: 0 0 var(--space-3); }
+  .big { font: var(--font-data-big-number); letter-spacing: -1.5px; margin: 0; font-variant-numeric: tabular-nums;
+    display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: baseline; column-gap: var(--space-1); row-gap: var(--space-2); }
+  .big .n { white-space: nowrap; }
+  .big .unit { font: var(--font-heading-h3); letter-spacing: 0; }
 
-  .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 16px 0; }
-  .btn { background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 10px 16px; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; }
-  .btn:hover { filter: brightness(1.05); }
+  .more { padding-top: var(--space-3); }
+  .more > * + * { margin-top: var(--space-6); }
+
+  /* Inputs / Button: Ghost, Medium */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+    height: 36px; padding: 10px var(--space-4); border-radius: 10px; background: none;
+    border: 1px solid var(--border-strong); color: var(--text-primary);
+    font: var(--font-label-default); letter-spacing: 0.2px; cursor: pointer;
+    transition: background-color var(--duration-fast) var(--ease-ui); }
+  .btn:hover { background: var(--bg-surface); }
+  .btn:active { background: var(--bg-subtle); }
+  .btn:focus-visible { outline: 2px solid var(--border-strong); outline-offset: 2px; }
+  @media (pointer: coarse) { .btn { min-height: 44px; } }
+
+  /* Disclosure row */
+  summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: var(--space-2);
+    padding: 7px var(--space-4); border: 1px solid var(--border-default); border-radius: var(--radius-xl);
+    color: var(--text-primary); transition: background-color var(--duration-fast) var(--ease-ui); }
+  summary::-webkit-details-marker { display: none; }
+  summary:hover { background: var(--bg-subtle); }
+  summary:focus-visible { outline: 2px solid var(--border-strong); outline-offset: 2px; }
+  summary svg { flex: none; color: var(--text-secondary); transition: transform var(--duration-base) var(--ease-ui); }
+  details[open] summary svg { transform: rotate(180deg); }
+  details ul { margin: var(--space-2) 0 0; padding: var(--space-1) var(--space-4) var(--space-1) 30px;
+    color: var(--text-secondary); font: var(--font-body-small); }
+  details li { margin-bottom: var(--space-2); }
+  details li:last-child { margin-bottom: 0; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
 </style>
+<script>
+  // Notion can't tell an embed its theme, so allow ?theme=light|dark on the embed URL.
+  (function () {
+    var t = new URLSearchParams(location.search).get("theme");
+    if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+  })();
+</script>
 </head>
 <body>
-<div class="widget">
-  <p class="eyebrow">Savings calculator</p>
-  <h1>How much could your plant save?</h1>
-  <p class="sub">Answer four quick questions for an estimated yearly savings range.</p>
+<div class="widget" id="widget">
+  <div class="header">
+    <h1>How much could your plant save?</h1>
+    <p class="sub">Answer four quick questions for an estimated yearly savings range.</p>
+  </div>
 
   <div class="progress" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
   <div id="steps"></div>
 
-  <section class="step" id="result" aria-live="polite">
-    <div class="result-card">
+  <section class="step result" id="result" aria-live="polite">
+    <div class="breakdown" id="breakdown"></div>
+    <div class="total-card inverted">
       <p class="label">Estimated yearly savings</p>
       <p class="big" id="total"></p>
     </div>
-    <div class="rows" id="breakdown"></div>
-    <div class="actions">
-      <a class="btn" href="#" id="cta">Talk to us about your plant</a>
-      <button class="link" id="restart" type="button">Start over</button>
+    <div class="more">
+      <div><button class="btn" id="restart" type="button">Start over</button></div>
+      <details>
+        <summary>How we calculated this
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </summary>
+        <ul id="assumptions"></ul>
+      </details>
     </div>
-    <details>
-      <summary>How we calculated this</summary>
-      <ul id="assumptions"></ul>
-    </details>
   </section>
 </div>
 
@@ -125,14 +229,12 @@
    Values marked ASSUMPTION fill a "No data" gap and should be confirmed.
 --------------------------------------------------------------------------- */
 const CONFIG = {
-  ctaUrl: "#", // ASSUMPTION: replace with the booking / contact link
-
   // Typical PE range per segment (ASSUMPTION: narrower than the full segment bounds)
   plants: {
-    small:     { label: "Small",      range: "< 5,000 PE",         pe: [2000, 5000] },
-    medium:    { label: "Medium",     range: "5,000 – 10,000 PE",   pe: [5000, 10000] },
-    large:     { label: "Large",      range: "10,000 – 100,000 PE", pe: [20000, 80000] },
-    veryLarge: { label: "Very large", range: "> 100,000 PE",        pe: [100000, 300000] },
+    medium:    { range: "5,000 – 10,000 PE",    pe: [5000, 10000] },
+    large:     { range: "10,000 – 100,000 PE",  pe: [20000, 80000] },
+    veryLarge: { range: "100,000 – 500,000 PE", pe: [100000, 300000] },
+    huge:      { range: "> 500,000 PE",         pe: [500000, 1000000] }, // ASSUMPTION: upper bound
   },
   m3PerPePerYear: 61,              // SE|BS: 18.3M m³ / 300k PE
 
@@ -157,21 +259,21 @@ const CONFIG = {
 };
 
 const QUESTIONS = [
-  { id: "size", q: "What size plant do you manage?", hint: "In population equivalent (PE).",
-    options: Object.entries(CONFIG.plants).map(([v, p]) => ({ v, label: p.label, meta: p.range })) },
-  { id: "lab", q: "Do you have a lab in-house?", hint: "Where microscopy and sludge tests are done today.",
+  { id: "size", q: "What size plant do you manage?", hint: "In population equivalent (PE)", other: true,
+    options: Object.entries(CONFIG.plants).map(([v, p]) => ({ v, label: p.range })) },
+  { id: "lab", q: "Do you have a lab in-house?", hint: "Where microscopy and sludge tests are done today",
     options: [
       { v: "yes", label: "Yes, we test on site" },
       { v: "no",  label: "No, we send samples to an external lab" },
     ] },
-  { id: "upsets", q: "Is your plant suffering from process upsets?", hint: "For example sludge bulking or foaming.",
+  { id: "upsets", q: "Is your plant suffering from process upsets?", hint: "For example sludge bulking or foaming",
     options: [
       { v: "often",     label: "Yes, regularly" },
       { v: "sometimes", label: "Occasionally" },
       { v: "no",        label: "No" },
       { v: "unsure",    label: "Not sure" },
     ] },
-  { id: "coag", q: "Which coagulant do you use?", hint: "For phosphorus removal.",
+  { id: "coag", q: "Which coagulant do you use?", hint: "For phosphorus removal",
     options: [
       { v: "iron",   label: "Iron (ferric / ferrous)" },
       { v: "pax",    label: "PAX / polyaluminium chloride" },
@@ -184,11 +286,17 @@ const QUESTIONS = [
 const answers = {};
 let current = 0;
 
-const eur = n => "€" + (Math.round(n / 100) * 100).toLocaleString("en-US");
+const fmt = n => n.toLocaleString("en-US");
+const eur = n => "€" + fmt(Math.round(n / 100) * 100);
 const range = ([a, b]) => a === b ? eur(a) : `${eur(a)} – ${eur(b)}`;
+const rangeHtml = ([a, b]) => a === b
+  ? `<span class="n">${eur(a)}</span>`
+  : `<span class="n">${eur(a)}</span><span>–</span><span class="n">${eur(b)}</span>`;
+
+const plantPe = a => a.size === "other" ? [a.pe, a.pe] : CONFIG.plants[a.size].pe;
 
 function calculate(a) {
-  const C = CONFIG, pe = C.plants[a.size].pe;
+  const C = CONFIG, pe = plantPe(a);
   const m3 = pe.map(p => p * C.m3PerPePerYear);
   const lo = 0, hi = 1;
 
@@ -208,15 +316,9 @@ function calculate(a) {
     C.coagulant.kgPerHourPerPe * pe[i] * 8760 * C.coagulant.price[a.coag] * C.coagulant.reduction[i]);
 
   return [
-    { name: "Automated lab analysis", val: lab,
-      note: a.lab === "yes" ? "Replaces weekly in-house microscopy and SVI / SV30 tests."
-                            : "Replaces monthly external microscopy and SVI / SV30 tests." },
-    { name: "Bulking prediction", val: bulk,
-      note: a.upsets === "no" ? "No upsets reported, so no saving counted here."
-                              : "Earlier warning avoids the dosing needed to control a bulking event." },
-    { name: "Chemical dosing", val: chem,
-      note: a.coag === "none" ? "No coagulant dosed, so no saving counted here."
-                              : `${Math.round(C.coagulant.reduction[0]*100)}–${Math.round(C.coagulant.reduction[1]*100)}% less coagulant through dosing based on live data.` },
+    { name: "Automated lab analysis", val: lab },
+    { name: "Bulking prediction", val: bulk },
+    { name: "Chemical dosing", val: chem },
   ];
 }
 
@@ -224,58 +326,79 @@ function render() {
   const wrap = document.getElementById("steps");
   wrap.innerHTML = QUESTIONS.map((q, i) => `
     <section class="step" data-i="${i}" role="group" aria-labelledby="q${i}">
-      <p class="q" id="q${i}">${q.q}</p>
-      <p class="hint">${q.hint}</p>
-      <div class="options">
-        ${q.options.map(o => `<button type="button" class="opt" data-q="${q.id}" data-v="${o.v}" aria-pressed="false">
-          <span>${o.label}</span>${o.meta ? `<small>${o.meta}</small>` : ""}</button>`).join("")}
+      <div class="question">
+        <p class="q" id="q${i}">${q.q}</p>
+        <p class="hint">${q.hint}</p>
       </div>
-      <div class="nav"><button type="button" class="link back" ${i === 0 ? "hidden" : ""}>← Back</button><span class="eyebrow">${i + 1} of ${QUESTIONS.length}</span></div>
+      <div class="options">
+        ${q.options.map(o => `<button type="button" class="opt" data-q="${q.id}" data-v="${o.v}" aria-pressed="false">${o.label}</button>`).join("")}
+        ${q.other ? `<label class="opt other" data-q="${q.id}" data-v="other" aria-pressed="false">
+          <span>Other:</span><input type="text" inputmode="numeric" placeholder="Number of PE" aria-label="Other plant size, in PE">
+          <button type="button" hidden>Next →</button></label>` : ""}
+      </div>
+      <div class="nav"><button type="button" class="link back" ${i === 0 ? "hidden" : ""}>← Back</button><span class="count">${i + 1} of ${QUESTIONS.length}</span></div>
     </section>`).join("");
 
+  const pick = (opt, value) => {
+    answers[opt.dataset.q] = value;
+    opt.parentElement.querySelectorAll(".opt").forEach(b => b.setAttribute("aria-pressed", b === opt));
+  };
+
   wrap.addEventListener("click", e => {
-    const opt = e.target.closest(".opt");
-    if (opt) {
-      answers[opt.dataset.q] = opt.dataset.v;
-      opt.parentElement.querySelectorAll(".opt").forEach(b => b.setAttribute("aria-pressed", b === opt));
-      setTimeout(() => go(current + 1), 140);
-    }
+    const opt = e.target.closest("button.opt");
+    if (opt) { pick(opt, opt.dataset.v); setTimeout(() => go(current + 1), 140); }
     if (e.target.closest(".back")) go(current - 1);
   });
+
+  // "Other" size: type a PE number, then Enter or Next.
+  const other = wrap.querySelector(".opt.other");
+  if (other) {
+    const input = other.querySelector("input"), next = other.querySelector("button");
+    const value = () => parseInt(input.value.replace(/[^\d]/g, ""), 10);
+    const submit = () => {
+      const n = value();
+      if (!(n > 0)) { input.focus(); return; }
+      answers.pe = n; pick(other, "other"); go(current + 1);
+    };
+    input.addEventListener("input", () => { next.hidden = !(value() > 0); });
+    input.addEventListener("keydown", e => { if (e.key === "Enter") submit(); });
+    next.addEventListener("click", submit);
+  }
+
   document.getElementById("restart").addEventListener("click", () => {
     Object.keys(answers).forEach(k => delete answers[k]);
     document.querySelectorAll(".opt").forEach(b => b.setAttribute("aria-pressed", "false"));
+    if (other) { other.querySelector("input").value = ""; other.querySelector("button").hidden = true; }
     go(0);
   });
-  document.getElementById("cta").href = CONFIG.ctaUrl;
   go(0);
 }
 
 function go(i) {
   current = Math.max(0, Math.min(i, QUESTIONS.length));
+  const done = current === QUESTIONS.length;
+  document.getElementById("widget").classList.toggle("done", done);
   document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
-  document.querySelectorAll(".progress span").forEach((s, k) => s.classList.toggle("on", k < current || current === QUESTIONS.length));
-  if (current < QUESTIONS.length) {
+  document.querySelectorAll(".progress span").forEach((s, k) => s.classList.toggle("on", k < current || done));
+  if (!done) {
     const s = document.querySelector(`.step[data-i="${current}"]`);
     s.classList.add("active");
-    (s.querySelector('.opt[aria-pressed="true"]') || s.querySelector(".opt")).focus({ preventScroll: true });
+    (s.querySelector('button.opt[aria-pressed="true"]') || s.querySelector("button.opt")).focus({ preventScroll: true });
   } else showResult();
 }
 
 function showResult() {
   const parts = calculate(answers);
   const total = [0, 1].map(i => parts.reduce((s, p) => s + p.val[i], 0));
-  document.getElementById("total").innerHTML = `${range(total)} <span>/ year</span>`;
+  document.getElementById("total").innerHTML = `${rangeHtml(total)} <span class="unit">/ year</span>`;
   document.getElementById("breakdown").innerHTML = parts.map(p => `
-    <div class="row">
-      <b>${p.name}</b><span class="amt">${p.val[1] ? range(p.val) : "—"}</span>
-      <div class="bar"><i style="width:${total[1] ? (p.val[1] / total[1]) * 100 : 0}%"></i></div>
-      <p>${p.note}</p>
-    </div>`).join("");
+    <div class="row"><span>${p.name}</span><span class="amt${p.val[1] ? "" : " none"}">${p.val[1] ? range(p.val) : "—"}</span></div>`).join("");
 
-  const C = CONFIG, p = C.plants[answers.size];
+  const C = CONFIG, pe = plantPe(answers);
   document.getElementById("assumptions").innerHTML = [
-    `Plant size: ${p.pe[0].toLocaleString("en-US")}–${p.pe[1].toLocaleString("en-US")} PE, about ${C.m3PerPePerYear} m³ treated per PE per year.`,
+    pe[0] === pe[1]
+      ? `Plant size: ${fmt(pe[0])} PE, about ${C.m3PerPePerYear} m³ treated per PE per year.`
+      : `Plant size: ${fmt(pe[0])}–${fmt(pe[1])} PE, about ${C.m3PerPePerYear} m³ treated per PE per year.`,
     answers.lab === "yes"
       ? `Microscopy: ${C.microscopyInternal.hours} h per analysis, weekly, at €${C.microscopyInternal.wage[0]}–${C.microscopyInternal.wage[1]}/h.`
       : `Microscopy: external lab at €${C.microscopyExternal.price[0]}–${C.microscopyExternal.price[1]} per analysis, monthly.`,

@@ -9,8 +9,10 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
 <style>
   /* Lir design tokens, copied from lir-design-system/tokens/tokens.css (2026-10-30).
+     Layout follows Figma "lir_notion-widgets_calculator-and-connectors_2026-11-13".
      Dark is the default. Light follows the OS, or force a theme with ?theme=light / ?theme=dark. */
   :root {
+    --bg-canvas: #141719;
     --bg-surface: #25292d;
     --bg-subtle: #30353a;
     --border-default: #394149;
@@ -18,25 +20,24 @@
     --text-primary: #f2f4fa;
     --text-secondary: #cde6e9;
     --text-muted: #8c979f;
-    --text-on-accent: #000000;
-    --accent-primary: #ebff8b;
-    --accent-primary-bg: #3a4120;
 
     --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
-    --space-6: 24px; --space-8: 32px; --space-12: 48px;
-    --radius-md: 8px; --radius-lg: 12px; --radius-xl: 20px; --radius-full: 999px;
+    --space-6: 24px; --space-16: 64px;
+    --radius-md: 8px; --radius-lg: 12px; --radius-full: 999px;
 
     --font-family: "Mori", "DM Sans", system-ui, sans-serif;
+    --font-heading-h1: 500 24px/30px var(--font-family);
+    --font-heading-h3: 500 15px/20px var(--font-family);
+    --font-body-small: 400 12px/16px var(--font-family);
+    --font-label-default: 500 12px/16px var(--font-family);
     --ease-ui: cubic-bezier(0.23, 1, 0.32, 1);
     --duration-fast: 150ms;
     --duration-base: 250ms;
-
-    /* Selected line: lime on dark; lime has no contrast on white, so Light uses border/strong. */
-    --selected-line: var(--accent-primary);
     color-scheme: dark;
   }
   @media (prefers-color-scheme: light) {
     :root:not([data-theme="dark"]) {
+      --bg-canvas: #f4f7f5;
       --bg-surface: #ffffff;
       --bg-subtle: #e1f3e6;
       --border-default: #cde6e9;
@@ -44,12 +45,11 @@
       --text-primary: #000000;
       --text-secondary: #394149;
       --text-muted: #5f6a73;
-      --accent-primary-bg: #ebff8b;
-      --selected-line: var(--border-strong);
       color-scheme: light;
     }
   }
   :root[data-theme="light"] {
+    --bg-canvas: #f4f7f5;
     --bg-surface: #ffffff;
     --bg-subtle: #e1f3e6;
     --border-default: #cde6e9;
@@ -57,8 +57,6 @@
     --text-primary: #000000;
     --text-secondary: #394149;
     --text-muted: #5f6a73;
-    --accent-primary-bg: #ebff8b;
-    --selected-line: var(--border-strong);
     color-scheme: light;
   }
 
@@ -66,113 +64,78 @@
   /* Transparent so the widget sits on the Notion page in either Notion theme. */
   html, body { margin: 0; background: transparent; color: var(--text-primary); }
   body {
-    font-family: var(--font-family);
     font: 400 14px/20px var(--font-family); /* Body/Default */
     padding: var(--space-6) var(--space-4);
     -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 980px; margin: 0 auto; }
+  .wrap { max-width: 450px; margin: 0 auto; }
 
-  /* Label/Default */
-  .label { font: 500 12px/16px var(--font-family); letter-spacing: .2px; color: var(--text-muted); }
+  /* Panels: What Lir reads, your server, What operators get */
+  .panel { background: var(--bg-subtle); border-radius: var(--radius-lg); padding: var(--space-6); }
+  .panel h2 { margin: 0 0 var(--space-6); text-align: center; font: var(--font-heading-h1); letter-spacing: -0.5px; }
+  .stack { display: flex; flex-direction: column; gap: var(--space-2); }
 
-  .heads, .graph { display: grid; grid-template-columns: 1fr 1.05fr 1fr; column-gap: clamp(32px, 7vw, 96px); }
-  .heads { margin-bottom: var(--space-3); }
-  .heads span:nth-child(2) { text-align: center; }
-  .graph { position: relative; align-items: center; }
-
-  .wires { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
-  .wires path {
-    fill: none; stroke: var(--border-default); stroke-width: 1;
-    transition: stroke var(--duration-base) var(--ease-ui), stroke-width var(--duration-base) var(--ease-ui);
+  /* Cards */
+  .card {
+    background: var(--bg-canvas); color: var(--text-primary);
+    border: 1px solid var(--border-default); border-radius: var(--radius-md);
+    padding: var(--space-3) 14px;
   }
-  .wires path.dashed { stroke-dasharray: 4 4; }
-  .wires path.feed { stroke: var(--border-strong); }
-  .wires path.on { stroke: var(--selected-line); stroke-width: 2; }
+  .card b { display: block; font: var(--font-heading-h3); }
+  .card small { display: block; font: var(--font-body-small); color: var(--text-muted); }
 
-  .col { display: flex; flex-direction: column; gap: var(--space-2); position: relative; z-index: 1; }
-
-  /* Sensor cards */
+  /* Sources: select one to see what it is */
   .src {
-    all: unset; box-sizing: border-box; cursor: pointer;
+    all: unset; box-sizing: border-box; cursor: pointer; width: 100%;
     display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
-    min-height: 44px; padding: var(--space-3) 14px; border-radius: var(--radius-lg);
-    background: var(--bg-surface); border: 1px solid var(--border-default);
-    transition: border-color var(--duration-fast) var(--ease-ui), background var(--duration-fast) var(--ease-ui);
+    background: var(--bg-canvas); color: var(--text-primary);
+    border: 1px solid var(--border-default); border-radius: var(--radius-md);
+    padding: var(--space-3) 14px; min-height: 46px;
+    transition: background-color var(--duration-fast) var(--ease-ui), color var(--duration-fast) var(--ease-ui),
+      border-color var(--duration-fast) var(--ease-ui);
   }
   .src:hover { border-color: var(--border-strong); }
   .src:focus-visible { outline: 2px solid var(--border-strong); outline-offset: 2px; }
-  .src[aria-pressed="true"] {
-    background: var(--accent-primary-bg); border-color: var(--selected-line);
-    box-shadow: inset 3px 0 0 var(--selected-line);
-  }
-  .src.later { background: transparent; border-style: dashed; }
-  .src.later[aria-pressed="true"] { background: var(--accent-primary-bg); }
-  .src b { display: block; font: 500 15px/20px var(--font-family); color: var(--text-primary); } /* Heading/H3 */
-  .src small { display: block; font: 400 12px/16px var(--font-family); color: var(--text-muted); margin-top: 2px; } /* Body/Small */
-  .src[aria-pressed="true"] small { color: var(--text-secondary); }
-
+  .src b { display: block; font: var(--font-heading-h3); }
+  .src small { display: none; font: var(--font-body-small); margin-top: 2px; }
+  /* Selected: inverted (text/primary fill, bg/canvas text) and shows its line */
+  .src[aria-pressed="true"] { background: var(--text-primary); color: var(--bg-canvas); border-color: var(--text-primary); }
+  .src[aria-pressed="true"] small { display: block; }
   .tag {
-    flex: none; white-space: nowrap;
-    font: 500 12px/16px var(--font-family); letter-spacing: .2px; color: var(--text-muted);
+    flex: none; white-space: nowrap; padding: 2px var(--space-2); border-radius: var(--radius-full);
+    background: var(--bg-surface); color: var(--text-secondary);
+    font: var(--font-label-default); letter-spacing: .2px;
   }
-  .src.lir .tag {
-    padding: 2px var(--space-2); border-radius: var(--radius-full);
-    background: var(--bg-subtle); color: var(--text-secondary);
-  }
-  .src.lir[aria-pressed="true"] .tag { background: var(--bg-surface); }
+  .src[aria-pressed="true"] .tag { color: var(--text-primary); }
 
-  /* Lir hub */
-  .core {
-    position: relative; z-index: 1;
-    background: var(--bg-subtle); color: var(--text-primary);
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-xl); padding: var(--space-6) var(--space-6) 20px;
-  }
-  .core h2 { margin: 0; text-align: center; font: 300 40px/44px var(--font-family); letter-spacing: -1px; } /* Display */
-  .core p.sub { margin: var(--space-1) 0 20px; text-align: center; font: 400 12px/16px var(--font-family); color: var(--text-muted); }
-  .rows { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
-  .rows li {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 6px 10px; border-radius: var(--radius-md); background: var(--bg-surface);
-    font: 400 13px/16px var(--font-family); color: var(--text-secondary);
-    transition: background var(--duration-base) var(--ease-ui), color var(--duration-base) var(--ease-ui);
-  }
-  .rows li.later { background: transparent; outline: 1px dashed var(--border-strong); outline-offset: -1px; color: var(--text-muted); }
-  .rows li.on { background: var(--accent-primary); color: var(--text-on-accent); font-weight: 500; outline: 0; }
-  .core .foot { margin: var(--space-4) 0 0; text-align: center; font: 400 12px/16px var(--font-family); color: var(--text-muted); }
+  /* Wires */
+  .wire { display: block; width: 100%; color: var(--text-primary); overflow: visible; }
+  .wire path, .wire line { fill: none; stroke: currentColor; stroke-width: 1; vector-effect: non-scaling-stroke; }
+  .wire circle { fill: currentColor; }
 
-  /* What your team gets */
-  .out {
+  /* your server */
+  .server .card { padding: var(--space-6); text-align: center; }
+  .server .card b { margin-bottom: var(--space-3); }
+  .server img { display: block; width: 100%; max-width: 352px; height: auto; margin: 0 auto; }
+
+  /* What operators get */
+  .out { padding: var(--space-3) 14px; border-radius: var(--radius-lg); }
+  .out-head { display: flex; align-items: center; gap: 6px; min-height: 24px; }
+  .out-head svg { flex: none; width: 24px; height: 24px; color: var(--text-primary); }
+  .out small { margin-top: var(--space-3); }
+  .out.expandable { padding: 0; }
+  .out.expandable > button {
+    all: unset; box-sizing: border-box; cursor: pointer; width: 100%;
+    display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
     padding: var(--space-3) 14px; border-radius: var(--radius-lg);
-    background: var(--bg-surface); border: 1px solid var(--border-default);
   }
-  .out b { display: block; font: 500 15px/20px var(--font-family); }
-  .out small { display: block; font: 400 12px/16px var(--font-family); color: var(--text-muted); margin-top: 2px; }
-
-  /* Detail panel */
-  .panel {
-    margin-top: var(--space-6); padding: var(--space-4) 18px; border-radius: var(--radius-xl);
-    border: 1px solid var(--border-default); background: var(--bg-surface);
-    display: grid; grid-template-columns: minmax(150px, .8fr) 1fr 1fr; gap: 6px var(--space-6); min-height: 104px;
-  }
-  .panel h3 { margin: 0; font: 500 18px/24px var(--font-family); letter-spacing: -.2px; } /* Heading/H2 */
-  .panel .kind { margin-top: 2px; }
-  .panel h4 { margin: 0 0 var(--space-1); font: 500 12px/16px var(--font-family); letter-spacing: .2px; color: var(--text-muted); }
-  .panel p { margin: 0; color: var(--text-secondary); }
-  .hint { margin: 10px 0 0; text-align: center; font: 400 12px/16px var(--font-family); color: var(--text-muted); }
-
-  /* Narrow: Notion side column, phones */
-  .graph.v { grid-template-columns: 1fr; row-gap: var(--space-12); }
-  .heads.v { display: none; }
-  .graph.v .col { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
-  .graph.v .col::before {
-    content: attr(data-label); grid-column: 1 / -1;
-    font: 500 12px/16px var(--font-family); letter-spacing: .2px; color: var(--text-muted);
-  }
-  .graph.v .src { flex-direction: column; align-items: flex-start; gap: 6px; }
-  .graph.v .core { max-width: 420px; width: 100%; justify-self: center; }
-  .panel.v { grid-template-columns: 1fr; gap: var(--space-3); }
+  .out.expandable > button:focus-visible { outline: 2px solid var(--border-strong); outline-offset: 2px; }
+  .out.expandable > button > svg { flex: none; color: var(--text-secondary); transition: transform var(--duration-base) var(--ease-ui); }
+  .out.expandable > button[aria-expanded="true"] > svg { transform: rotate(180deg); }
+  .out .sub-items { display: flex; flex-direction: column; gap: var(--space-2); padding: 0 14px var(--space-3); }
+  .out .sub-items[hidden] { display: none; }
+  .out .sub-items div { padding: var(--space-3) 14px; border: 1px solid var(--border-default); border-radius: var(--radius-md);
+    background: var(--bg-surface); font: var(--font-heading-h3); }
 
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -186,151 +149,100 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="heads label" id="heads" aria-hidden="true">
-    <span>What Lir reads</span><span>Lir</span><span>What your team gets</span>
-  </div>
+  <section class="panel" aria-label="What Lir reads">
+    <div class="stack" id="sources" role="group" aria-label="Data sources. Select one to see what it is."></div>
+  </section>
 
-  <div class="graph" id="graph">
-    <svg class="wires" id="wires" aria-hidden="true"></svg>
+  <!-- Three sources merge into one line down to your server -->
+  <svg class="wire" viewBox="0 0 450 67" preserveAspectRatio="none" height="67" aria-hidden="true">
+    <path d="M48 0 V27 Q48 33 54 33 H219 Q225 33 225 39 V67"/>
+    <path d="M402 0 V27 Q402 33 396 33 H231 Q225 33 225 39 V67"/>
+    <line x1="225" y1="0" x2="225" y2="67"/>
+  </svg>
 
-    <div class="col" id="sources" data-label="What Lir reads" role="group" aria-label="Sensors. Select one to see what it covers."></div>
-
-    <div class="core" id="core">
-      <h2>Lir</h2>
-      <p class="sub">Reads every image alongside your process data</p>
-      <ul class="rows" id="rows"></ul>
-      <p class="foot">Lir recommends, your operators decide</p>
+  <section class="panel server">
+    <h2>your server</h2>
+    <div class="card">
+      <b>Lir telegraph</b>
+      <img src="lir-telegraph.png" width="352" height="213" alt="The Lir dashboard open on a laptop, showing a plant overview, observations and pinned readings">
     </div>
+  </section>
 
-    <div class="col" id="outputs" data-label="What your team gets"></div>
-  </div>
+  <svg class="wire" viewBox="0 0 450 67" preserveAspectRatio="none" height="67" aria-hidden="true">
+    <line x1="225" y1="0" x2="225" y2="67"/>
+  </svg>
 
-  <div class="panel" id="panel" aria-live="polite"></div>
-  <p class="hint">Select a sensor to see what it covers.</p>
+  <section class="panel">
+    <h2>What operators get</h2>
+    <div class="stack">
+      <div class="card out expandable">
+        <button type="button" aria-expanded="false" aria-controls="bio-items">
+          <span class="out-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.4771 3.29166C10.959 1.80863 13.0571 1.80863 13.5389 3.29166L14.6597 6.7409C14.8751 7.40413 15.4932 7.85317 16.1906 7.85317H19.8173C21.3766 7.85317 22.025 9.84856 20.7635 10.7651L17.8294 12.8969C17.2652 13.3068 17.0291 14.0333 17.2446 14.6966L18.3653 18.1458C18.8472 19.6288 17.1498 20.862 15.8883 19.9455L12.9542 17.8137C12.39 17.4038 11.626 17.4038 11.0619 17.8137L8.12777 19.9455C6.86624 20.862 5.16885 19.6288 5.65072 18.1458L6.77144 14.6966C6.98694 14.0333 6.75086 13.3068 6.18669 12.8969L3.25259 10.7651C1.99105 9.84856 2.6394 7.85317 4.19874 7.85317H7.82549C8.52285 7.85317 9.1409 7.40413 9.35639 6.7409L10.4771 3.29166Z"/><path d="M15.9437 4.08198C17.2115 3.17415 18.9004 4.41906 18.4083 5.89872L17.2638 9.34014C17.0437 10.0019 17.2748 10.73 17.8361 11.1438L20.7554 13.2958C22.0106 14.221 21.3485 16.2119 19.7892 16.2011L16.1625 16.1761C15.4652 16.1713 14.8441 16.616 14.624 17.2778L13.4795 20.7192C12.9874 22.1989 10.8894 22.1844 10.4178 20.6981L9.32086 17.2412C9.10995 16.5765 8.49501 16.1232 7.79767 16.1184L4.17101 16.0933C2.61171 16.0826 1.97715 14.0828 3.24498 13.1749L6.19372 11.0635C6.76071 10.6575 7.00179 9.93257 6.79088 9.26787L5.69398 5.81098C5.22237 4.32466 6.92822 3.10318 8.1834 4.02843L11.1027 6.18037C11.6641 6.59415 12.428 6.59943 12.995 6.19343L15.9437 4.08198Z"/></svg>
+            <b>Biology indicators</b>
+          </span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="sub-items" id="bio-items" hidden>
+          <div>Proxi SVI</div>
+          <div>Proxi SV30</div>
+          <div>Microscopy reports</div>
+        </div>
+      </div>
+
+      <div class="card out">
+        <span class="out-head">
+          <!-- icon/flag is a 16 px icon; centred in a 24 px box to line up with the others -->
+          <svg viewBox="-4 -4 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.75 14.25V1.75M3.75 2.25H12.25L10.25 5.5L12.25 8.75H3.75"/></svg>
+          <b>Early alerts</b>
+        </span>
+        <small>On early signs of process upsets</small>
+      </div>
+
+      <div class="card out">
+        <span class="out-head">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 16.4445L7.55556 9.77778L12 13.1111L17.5556 4.22223L22 7.55556"/><path d="M2 19.7778H22"/></svg>
+          <b>Observations</b>
+        </span>
+        <small>On how to keep your biology stable</small>
+      </div>
+    </div>
+  </section>
 </div>
 
 <script>
-const SENSORS = [
-  {
-    id: "microscope", name: "Inline microscope", sub: "Images the microbes in your tank",
-    tag: "Lir sensor", row: "Microbe images", cls: "lir",
-    covers: "The biology in your aeration tank. It samples the tank automatically and captures up to 60,000 images an hour, including the thread-like filamentous bacteria behind bulking.",
-    uses: "The images are the basis of each tank’s biological health score and of alerts on early signs of bulking."
-  },
-  {
-    id: "do", name: "Dissolved oxygen", sub: "Oxygen available to the microbes",
-    tag: "Your probe", row: "Dissolved oxygen",
-    covers: "How much oxygen is dissolved in the tank, which is what the microbes rely on to treat your wastewater.",
-    uses: "Lir reads it alongside every image, so changes in the biology are seen in the context of your process."
-  },
-  {
-    id: "nh4", name: "Ammonia", sub: "A sign of how nitrification is going",
-    tag: "Your probe", row: "Ammonia",
-    covers: "Ammonia levels in the tank, an indicator of how well nitrification is working.",
-    uses: "Lir reads it alongside every image, so changes in the biology are seen in the context of your process."
-  },
-  {
-    id: "temp", name: "Temperature", sub: "How fast the microbes work",
-    tag: "Your probe", row: "Temperature",
-    covers: "Tank temperature, which changes how quickly the microbes grow and work.",
-    uses: "Lir reads it alongside every image, so changes in the biology are seen in the context of your process."
-  },
-  {
-    id: "scada", name: "Plant SCADA", sub: "Your control system",
-    tag: "Mid-2027", row: "SCADA, from mid-2027", cls: "later",
-    covers: "Your plant’s control system and the process data it already records.",
-    uses: "Connection to your plant’s SCADA arrives in mid-2027. Until then, Lir works alongside your existing probes."
-  }
+const SOURCES = [
+  { id: "microscope", name: "Inline microscope", sub: "Images the microbes in your tank", tag: "Lir sensor" },
+  { id: "telemetry",  name: "Your telemetry",    sub: "Live readings from your probes",   tag: "OPC-UA" },
+  { id: "historian",  name: "Your historian",    sub: "Your plant’s past process data",   tag: "REST" },
 ];
 
-const OUTPUTS = [
-  { name: "Health score", sub: "For each tank" },
-  { name: "Early alerts", sub: "On early signs of bulking" },
-  { name: "Recommendations", sub: "On what to check" },
-  { name: "Microscope checks", sub: "At your desk, not in the lab" }
-];
-
-const $ = id => document.getElementById(id);
-const graph = $("graph"), wires = $("wires"), panel = $("panel");
+const sources = document.getElementById("sources");
 let selected = "microscope";
 
-SENSORS.forEach(s => {
+SOURCES.forEach(s => {
   const b = document.createElement("button");
-  b.className = "src" + (s.cls ? " " + s.cls : "");
+  b.type = "button";
+  b.className = "src";
   b.dataset.id = s.id;
-  b.setAttribute("aria-pressed", "false");
-  b.setAttribute("aria-controls", "panel");
   b.innerHTML = `<span><b>${s.name}</b><small>${s.sub}</small></span><span class="tag">${s.tag}</span>`;
-  b.addEventListener("click", () => select(selected === s.id ? null : s.id));
-  $("sources").appendChild(b);
-
-  const li = document.createElement("li");
-  li.dataset.id = s.id;
-  if (s.cls === "later") li.className = "later";
-  li.innerHTML = `<span>${s.row}</span>`;
-  $("rows").appendChild(li);
-});
-
-OUTPUTS.forEach(o => {
-  const d = document.createElement("div");
-  d.className = "out";
-  d.innerHTML = `<b>${o.name}</b><small>${o.sub}</small>`;
-  $("outputs").appendChild(d);
+  b.addEventListener("click", () => select(s.id));
+  sources.appendChild(b);
 });
 
 function select(id) {
   selected = id;
-  document.querySelectorAll(".src").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.id === id)));
-  document.querySelectorAll(".rows li").forEach(li => li.classList.toggle("on", li.dataset.id === id));
-  wires.querySelectorAll("path").forEach(p => {
-    p.classList.toggle("on", p.dataset.src === id);
-    p.classList.toggle("feed", !!id && p.dataset.out === "1");
-  });
-  const s = SENSORS.find(x => x.id === id);
-  panel.innerHTML = s
-    ? `<div><h3>${s.name}</h3><div class="kind label">${s.tag}</div></div>
-       <div><h4>What it covers</h4><p>${s.covers}</p></div>
-       <div><h4>How Lir uses it</h4><p>${s.uses}</p></div>`
-    : `<div><h3>Five inputs, one view</h3></div>
-       <div><p>Lir combines its own images of your microbes with the process data your plant already collects.</p></div>
-       <div><p>Select a sensor to see what it covers.</p></div>`;
+  sources.querySelectorAll(".src").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.id === id)));
 }
+select(selected);
 
-function curve(x1, y1, x2, y2, vertical) {
-  if (vertical) {
-    const d = (y2 - y1) / 2;
-    return `M${x1},${y1} C${x1},${y1 + d} ${x2},${y2 - d} ${x2},${y2}`;
-  }
-  const d = (x2 - x1) / 2;
-  return `M${x1},${y1} C${x1 + d},${y1} ${x2 - d},${y2} ${x2},${y2}`;
-}
-
-function layout() {
-  const vertical = graph.clientWidth < 640;
-  [graph, $("heads"), panel].forEach(el => el.classList.toggle("v", vertical));
-
-  const g = graph.getBoundingClientRect();
-  const r = el => { const b = el.getBoundingClientRect(); return { l: b.left - g.left, r: b.right - g.left, t: b.top - g.top, b: b.bottom - g.top, x: b.left - g.left + b.width / 2, y: b.top - g.top + b.height / 2 }; };
-  const core = r($("core"));
-  let html = "";
-
-  document.querySelectorAll(".src").forEach(el => {
-    const s = r(el), id = el.dataset.id, dashed = el.classList.contains("later") ? "dashed" : "";
-    const d = vertical ? curve(s.x, s.b, core.x, core.t, true) : curve(s.r, s.y, core.l, core.y, false);
-    html += `<path class="${dashed}" data-src="${id}" d="${d}"/>`;
-  });
-  document.querySelectorAll(".out").forEach(el => {
-    const o = r(el);
-    const d = vertical ? curve(core.x, core.b, o.x, o.t, true) : curve(core.r, core.y, o.l, o.y, false);
-    html += `<path data-out="1" d="${d}"/>`;
-  });
-  wires.innerHTML = html;
-  select(selected);
-}
-
-new ResizeObserver(layout).observe(graph);
-if (document.fonts) document.fonts.ready.then(layout);
-layout();
+// Biology indicators opens to show what it includes.
+const bio = document.querySelector(".out.expandable > button");
+bio.addEventListener("click", () => {
+  const open = bio.getAttribute("aria-expanded") !== "true";
+  bio.setAttribute("aria-expanded", String(open));
+  document.getElementById("bio-items").hidden = !open;
+});
 </script>
 </body>
 </html>
