@@ -57,10 +57,13 @@
     padding: var(--space-6) var(--space-4);
     -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 1244px; margin: 0 auto; }
+  /* The photo always fits the embed: as wide as it can be without being taller than the frame,
+     so Notion never shows a scrollbar or cuts the bottom off. */
+  .wrap { max-width: min(1244px, calc((100vh - 2 * var(--space-6)) * 1244 / 862)); margin: 0 auto; }
 
   /* Stage: the installed device, everything else faded. Positions are % of the 1244 × 862 Figma frame. */
-  .stage { position: relative; aspect-ratio: 1244 / 862; background: var(--bg-canvas); }
+  /* overflow: hidden stops closed cards from making the embed scroll; open cards are kept inside by fit() */
+  .stage { position: relative; aspect-ratio: 1244 / 862; background: var(--bg-canvas); overflow: hidden; }
   .stage .bg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .19; }
   .stage .device { position: absolute; left: 40.595%; top: 17.053%; width: 23.151%; height: 58.701%; }
 
@@ -221,7 +224,10 @@
     function fit(hot) {
       var card = hot.querySelector(".card");
       card.style.setProperty("--dx", "0px"); card.style.setProperty("--dy", "0px");
-      var s = stage.getBoundingClientRect(), pad = 8, dx = 0, dy = 0;
+      // Visible part of the photo (the embed frame may be shorter than the page)
+      var r0 = stage.getBoundingClientRect(), pad = 8, dx = 0, dy = 0;
+      var s = { left: r0.left, right: r0.right, top: Math.max(r0.top, 0), bottom: Math.min(r0.bottom, window.innerHeight) };
+      s.height = s.bottom - s.top;
       // Never taller than the photo: long cards scroll inside on small embeds.
       card.style.maxHeight = (s.height - 2 * pad) + "px";
       // measure without the scale-in transform
