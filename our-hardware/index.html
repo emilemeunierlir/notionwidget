@@ -9,18 +9,16 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
 <style>
   /* Lir design tokens, copied from lir-design-system/tokens/tokens.css (2026-10-30).
-     Layout follows Figma "lir_notion-widgets_calculator-and-connectors_2026-11-13" › section "hardware widget".
+     Layout follows Figma "lir_notion-widgets_calculator-and-connectors_2026-11-13" › section "hardware widget",
+     frame "Our hardware" (open): each + expands into its card in place, over the photo.
      Dark is the default. Light follows the OS, or force a theme with ?theme=light / ?theme=dark.
-     Inverted surfaces (the + buttons) use text/primary as fill and bg/canvas as text, so they flip with the theme;
-     their muted line uses the other theme's text/muted (--text-muted-inverse). */
+     Inverted surfaces (the + buttons) use text/primary as fill and bg/canvas as icon colour, so they flip with the theme. */
   :root {
     --bg-canvas: #141719;
     --bg-subtle: #30353a;
     --border-default: #394149;
     --border-strong: #5a646d;
     --text-primary: #f2f4fa;
-    --text-muted: #8c979f;
-    --text-muted-inverse: #5f6a73;
 
     --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 24px;
     --radius-lg: 12px;
@@ -40,8 +38,6 @@
       --border-default: #cde6e9;
       --border-strong: #394149;
       --text-primary: #000000;
-      --text-muted: #5f6a73;
-      --text-muted-inverse: #8c979f;
       color-scheme: light;
     }
   }
@@ -51,8 +47,6 @@
     --border-default: #cde6e9;
     --border-strong: #394149;
     --text-primary: #000000;
-    --text-muted: #5f6a73;
-    --text-muted-inverse: #8c979f;
     color-scheme: light;
   }
 
@@ -66,44 +60,43 @@
   .wrap { max-width: 1244px; margin: 0 auto; }
 
   /* Stage: the installed device, everything else faded. Positions are % of the 1244 × 862 Figma frame. */
-  .stage {
-    position: relative; aspect-ratio: 1244 / 862; overflow: hidden;
-    background: var(--bg-canvas);
-  }
+  .stage { position: relative; aspect-ratio: 1244 / 862; background: var(--bg-canvas); }
   .stage .bg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .19; }
   .stage .device { position: absolute; left: 40.595%; top: 17.053%; width: 23.151%; height: 58.701%; }
 
-  /* Plus icon (30 px). Rotates 45° into a close cross. */
   .plus { width: 30px; height: 30px; flex: none; display: block; transition: transform var(--duration-base) var(--ease-ui); }
 
-  /* Hotspot: a 58 × 54 inverted button that grows into a name pill on hover */
-  .spot {
-    all: unset; box-sizing: border-box; position: absolute; cursor: pointer;
-    display: flex; align-items: center; justify-content: flex-end; gap: var(--space-3);
-    width: 58px; min-height: 54px; overflow: hidden;
-    padding: var(--space-3) 14px; border-radius: var(--radius-lg);
-    background: var(--text-primary); color: var(--bg-canvas);
-    transition: width var(--duration-base) var(--ease-ui), opacity var(--duration-fast) var(--ease-ui);
-  }
-  .spot:focus-visible { outline: 2px solid var(--border-strong); outline-offset: 2px; }
-  .spot .name { flex: 1 1 auto; min-width: 0; text-align: left; opacity: 0; white-space: nowrap;
-    transition: opacity var(--duration-fast) var(--ease-ui); }
-  .spot .name b { display: block; font: var(--font-heading-h1); letter-spacing: -0.5px; }
-  .spot .name small { display: block; font: var(--font-body-small); color: var(--text-muted-inverse); margin-top: 6px; }
-  .spot[aria-expanded="true"] { opacity: 0; pointer-events: none; }
-  @media (hover: hover) and (min-width: 900px) {
-    .spot:hover, .spot:focus-visible { width: 381.67px; }
-    .spot:hover .name, .spot:focus-visible .name { opacity: 1; }
-  }
+  /* Hotspot: holds the + button and its card. The card opens from the + corner,
+     so hovering the + (or the card) keeps it open. */
+  .hot { position: absolute; z-index: 1; }
+  .hot.open { z-index: 2; }
+  .hot[data-side="right"] { transform: translateX(-100%); } /* anchored by its right edge */
 
-  /* Open card */
+  .spot {
+    all: unset; box-sizing: border-box; cursor: pointer; display: grid; place-items: center;
+    width: 58px; height: 54px; border-radius: var(--radius-lg);
+    background: var(--text-primary); color: var(--bg-canvas);
+    transition: opacity var(--duration-fast) var(--ease-ui);
+  }
+  .hot[data-side="right"] .spot { margin-left: auto; }
+  .spot:focus-visible { outline: 2px solid var(--border-strong); outline-offset: 2px; }
+  .hot.open .spot { opacity: 0; }
+
   .card {
-    position: absolute; width: 381.67px; display: none; flex-direction: column; gap: var(--space-3);
+    position: absolute; top: 0; width: 381.67px; overflow-y: auto; overscroll-behavior: contain;
+    display: flex; flex-direction: column; gap: var(--space-3);
     padding: var(--space-3) 14px; border-radius: var(--radius-lg);
     background: var(--bg-subtle); color: var(--text-primary);
+    opacity: 0; visibility: hidden; transform: translate(var(--dx, 0px), var(--dy, 0px)) scale(.96);
+    transition: opacity var(--duration-fast) var(--ease-ui), transform var(--duration-base) var(--ease-ui),
+      visibility 0s linear var(--duration-fast);
   }
-  .card.open { display: flex; animation: pop var(--duration-base) var(--ease-ui); }
-  @keyframes pop { from { opacity: 0; transform: scale(.97); } }
+  .hot[data-side="right"] .card { right: 0; transform-origin: top right; }
+  .hot[data-side="left"] .card { left: 0; transform-origin: top left; }
+  .hot.open .card {
+    opacity: 1; visibility: visible; transform: translate(var(--dx, 0px), var(--dy, 0px));
+    transition: opacity var(--duration-fast) var(--ease-ui), transform var(--duration-base) var(--ease-ui), visibility 0s;
+  }
   .card header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
   .card h2 { margin: 0; flex: 1; font: var(--font-heading-h1); letter-spacing: -0.5px; }
   .close {
@@ -122,24 +115,16 @@
   .item ul { margin: 0; padding-left: 18px; }
   .item img { display: block; width: 100%; height: auto; }
 
-  /* Anchors from the Figma frame */
-  #spot-optical   { right: 56.97%;  top: 14.087%; }
-  #spot-ai        { left: 61.298%;  top: 40.155%; justify-content: flex-start; }
-  #spot-sampling  { right: 43.174%; top: 69.355%; }
-  #card-optical   { right: 56.78%;  top: 14.087%; }
-  #card-ai        { left: 61.298%;  top: 40.155%; }
-  #card-sampling  { right: 42.538%; top: 69.355%; }
-  /* AI computing opens to the right, so its plus sits on the left */
-  #spot-ai .plus { order: -1; }
+  /* Anchors from the open frame: the card corner sits on the + corner */
+  #hot-optical  { left: 43.22%; top: 14.087%; }  /* right edge */
+  #hot-ai       { left: 61.298%; top: 40.155%; } /* left edge */
+  #hot-sampling { left: 57.462%; top: 69.355%; } /* right edge */
 
-  /* Narrow embeds: hotspots stay on the photo, cards open below it */
-  @media (max-width: 899px) {
-    .cards { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-2); }
-    .card { position: static; width: auto; }
-    .spot[aria-expanded="true"] { opacity: 1; pointer-events: auto; }
-    .spot[aria-expanded="true"] .plus { transform: rotate(45deg); }
-    .spot { min-height: 44px; width: 44px; padding: 7px; justify-content: center; }
-    .spot .name { display: none; }
+  /* Small embeds: smaller + buttons; cards keep full text size and are kept inside the photo */
+  @media (max-width: 700px) {
+    .spot { width: 44px; height: 44px; }
+    .card { width: min(381.67px, calc(100vw - 48px)); }
+    .card h2 { font-size: 20px; line-height: 26px; }
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition: none !important; animation: none !important; }
@@ -163,20 +148,10 @@
     <img class="bg" src="hardware-bg.webp" alt="">
     <img class="device" src="hardware-device.webp" alt="The Lir inline microscope installed on an aeration lane railing">
 
-    <button class="spot" id="spot-optical" aria-expanded="false" aria-controls="card-optical">
-      <span class="name"><b>On-site optical analysis</b><small>how we analyze your treatment</small></span>
-      <svg class="plus" aria-hidden="true"><use href="#plus"/></svg>
-    </button>
-    <button class="spot" id="spot-ai" aria-expanded="false" aria-controls="card-ai">
-      <span class="name"><b>On device AI computing</b></span>
-      <svg class="plus" aria-hidden="true"><use href="#plus"/></svg>
-    </button>
-    <button class="spot" id="spot-sampling" aria-expanded="false" aria-controls="card-sampling">
-      <span class="name"><b>Sampling frequency</b></span>
-      <svg class="plus" aria-hidden="true"><use href="#plus"/></svg>
-    </button>
-
-    <div class="cards" id="cards">
+    <div class="hot" id="hot-optical" data-side="right">
+      <button class="spot" aria-expanded="false" aria-controls="card-optical" aria-label="On-site optical analysis">
+        <svg class="plus" aria-hidden="true"><use href="#plus"/></svg>
+      </button>
       <section class="card" id="card-optical" aria-labelledby="t-optical">
         <header>
           <h2 id="t-optical">On-site optical analysis</h2>
@@ -188,7 +163,12 @@
           <div class="item"><p>We see changes in your treatment 48 hours before regular tabletop microscopy detects it.</p></div>
         </div>
       </section>
+    </div>
 
+    <div class="hot" id="hot-ai" data-side="left">
+      <button class="spot" aria-expanded="false" aria-controls="card-ai" aria-label="On device AI computing">
+        <svg class="plus" aria-hidden="true"><use href="#plus"/></svg>
+      </button>
       <section class="card" id="card-ai" aria-labelledby="t-ai">
         <header>
           <button class="close" aria-label="Close On device AI computing"><svg class="plus" aria-hidden="true"><use href="#plus"/></svg></button>
@@ -209,7 +189,12 @@
           </div>
         </div>
       </section>
+    </div>
 
+    <div class="hot" id="hot-sampling" data-side="right">
+      <button class="spot" aria-expanded="false" aria-controls="card-sampling" aria-label="Sampling frequency">
+        <svg class="plus" aria-hidden="true"><use href="#plus"/></svg>
+      </button>
       <section class="card" id="card-sampling" aria-labelledby="t-sampling">
         <header>
           <h2 id="t-sampling">Sampling frequency</h2>
@@ -228,41 +213,68 @@
 <script>
   (function () {
     var stage = document.getElementById("stage");
-    var cards = document.getElementById("cards");
-    var wide = window.matchMedia("(min-width: 900px)");
+    var hots = Array.prototype.slice.call(document.querySelectorAll(".hot"));
+    var canHover = window.matchMedia("(hover: hover)").matches;
+    var closeTimer = null;
 
-    // Narrow: move the cards below the photo; wide: back over it.
-    function place() {
-      if (wide.matches) { if (cards.parentNode !== stage) stage.appendChild(cards); }
-      else if (cards.parentNode === stage) stage.parentNode.appendChild(cards);
+    // Keep an open card inside the photo: shift it by --dx / --dy if it would spill out.
+    function fit(hot) {
+      var card = hot.querySelector(".card");
+      card.style.setProperty("--dx", "0px"); card.style.setProperty("--dy", "0px");
+      var s = stage.getBoundingClientRect(), pad = 8, dx = 0, dy = 0;
+      // Never taller than the photo: long cards scroll inside on small embeds.
+      card.style.maxHeight = (s.height - 2 * pad) + "px";
+      // measure without the scale-in transform
+      var w = card.offsetWidth, h = card.offsetHeight;
+      var left = hot.dataset.side === "left" ? hot.getBoundingClientRect().left : hot.getBoundingClientRect().right - w;
+      var top = hot.getBoundingClientRect().top;
+      if (left + w > s.right - pad) dx = s.right - pad - (left + w);
+      if (left + dx < s.left + pad) dx = s.left + pad - left;
+      if (top + h > s.bottom - pad) dy = s.bottom - pad - (top + h);
+      if (top + dy < s.top + pad) dy = s.top + pad - top;
+      card.style.setProperty("--dx", dx + "px"); card.style.setProperty("--dy", dy + "px");
     }
-    place();
-    wide.addEventListener("change", place);
 
-    function set(spot, open) {
-      var card = document.getElementById(spot.getAttribute("aria-controls"));
-      spot.setAttribute("aria-expanded", String(open));
-      card.classList.toggle("open", open);
-      if (open && wide.matches) card.querySelector(".close").focus();
-      if (!open && wide.matches) spot.focus();
+    function open(hot) {
+      clearTimeout(closeTimer);
+      hots.forEach(function (h) { if (h !== hot) shut(h); });
+      if (hot.classList.contains("open")) return;
+      fit(hot);
+      hot.classList.add("open");
+      hot.querySelector(".spot").setAttribute("aria-expanded", "true");
+    }
+    function shut(hot) {
+      hot.classList.remove("open");
+      hot.querySelector(".spot").setAttribute("aria-expanded", "false");
     }
 
-    document.querySelectorAll(".spot").forEach(function (spot) {
+    hots.forEach(function (hot) {
+      var spot = hot.querySelector(".spot");
+      // Hover over the + opens its card; leaving the + and the card closes it.
+      if (canHover) {
+        hot.addEventListener("mouseenter", function () { open(hot); });
+        hot.addEventListener("mouseleave", function () {
+          clearTimeout(closeTimer);
+          closeTimer = setTimeout(function () { shut(hot); }, 120);
+        });
+      }
+      // Tap / click / keyboard toggles it.
       spot.addEventListener("click", function () {
-        set(spot, spot.getAttribute("aria-expanded") !== "true");
+        if (hot.classList.contains("open")) shut(hot);
+        else { open(hot); hot.querySelector(".close").focus({ preventScroll: true }); }
       });
+      hot.querySelector(".close").addEventListener("click", function () { shut(hot); spot.focus({ preventScroll: true }); });
     });
-    document.querySelectorAll(".card .close").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var card = btn.closest(".card");
-        set(document.querySelector('[aria-controls="' + card.id + '"]'), false);
-      });
+
+    // Tap outside closes; Escape closes.
+    document.addEventListener("click", function (e) {
+      hots.forEach(function (h) { if (!h.contains(e.target)) shut(h); });
     });
     document.addEventListener("keydown", function (e) {
       if (e.key !== "Escape") return;
-      var card = document.activeElement && document.activeElement.closest && document.activeElement.closest(".card.open");
-      if (card) set(document.querySelector('[aria-controls="' + card.id + '"]'), false);
+      hots.forEach(function (h) { if (h.classList.contains("open")) { shut(h); h.querySelector(".spot").focus(); } });
     });
+    window.addEventListener("resize", function () { hots.forEach(function (h) { if (h.classList.contains("open")) fit(h); }); });
   })();
 </script>
 </body>
