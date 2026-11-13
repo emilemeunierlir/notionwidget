@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Our hardware</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<style>
+  /* Lir design tokens, copied from lir-design-system/tokens/tokens.css (2026-10-30).
+     Layout follows Figma "lir_notion-widgets_calculator-and-connectors_2026-11-13" › section "hardware widget".
+     Dark is the default. Light follows the OS, or force a theme with ?theme=light / ?theme=dark.
+     Inverted surfaces (the + buttons) use text/primary as fill and bg/canvas as text, so they flip with the theme;
+     their muted line uses the other theme's text/muted (--text-muted-inverse). */
+  :root {
+    --bg-canvas: #141719;
+    --bg-subtle: #30353a;
+    --border-default: #394149;
+    --border-strong: #5a646d;
+    --text-primary: #f2f4fa;
+    --text-muted: #8c979f;
+    --text-muted-inverse: #5f6a73;
+
+    --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 24px;
+    --radius-lg: 12px;
+
+    --font-family: "Mori", "DM Sans", system-ui, sans-serif;
+    --font-heading-h1: 500 24px/30px var(--font-family);
+    --font-body-small: 400 12px/16px var(--font-family);
+    --ease-ui: cubic-bezier(0.23, 1, 0.32, 1);
+    --duration-fast: 150ms;
+    --duration-base: 250ms;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg-canvas: #f4f7f5;
+      --bg-subtle: #e1f3e6;
+      --border-default: #cde6e9;
+      --border-strong: #394149;
+      --text-primary: #000000;
+      --text-muted: #5f6a73;
+      --text-muted-inverse: #8c979f;
+      color-scheme: light;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg-canvas: #f4f7f5;
+    --bg-subtle: #e1f3e6;
+    --border-default: #cde6e9;
+    --border-strong: #394149;
+    --text-primary: #000000;
+    --text-muted: #5f6a73;
+    --text-muted-inverse: #8c979f;
+    color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: transparent; color: var(--text-primary); }
+  body {
+    font: 400 14px/20px var(--font-family);
+    padding: var(--space-6) var(--space-4);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1244px; margin: 0 auto; }
+
+  /* Stage: the installed device, everything else faded. Positions are % of the 1244 × 862 Figma frame. */
+  .stage {
+    position: relative; aspect-ratio: 1244 / 862; overflow: hidden;
+    background: var(--bg-canvas);
+  }
+  .stage .bg { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .19; }
+  .stage .device { position: absolute; left: 40.595%; top: 17.053%; width: 23.151%; height: 58.701%; }
+
+  /* Plus icon (30 px). Rotates 45° into a close cross. */
+  .plus { width: 30px; height: 30px; flex: none; display: block; transition: transform var(--duration-base) var(--ease-ui); }
+
+  /* Hotspot: a 58 × 54 inverted button that grows into a name pill on hover */
+  .spot {
+    all: unset; box-sizing: border-box; position: absolute; cursor: pointer;
+    display: flex; align-items: center; justify-content: flex-end; gap: var(--space-3);
+    width: 58px; min-height: 54px; overflow: hidden;
+    padding: var(--space-3) 14px; border-radius: var(--radius-lg);
+    background: var(--text-primary); color: var(--bg-canvas);
+    transition: width var(--duration-base) var(--ease-ui), opacity var(--duration-fast) var(--ease-ui);
+  }
+  .spot:focus-visible { outline: 2px solid var(--border-strong); outline-offset: 2px; }
+  .spot .name { flex: 1 1 auto; min-width: 0; text-align: left; opacity: 0; white-space: nowrap;
+    transition: opacity var(--duration-fast) var(--ease-ui); }
+  .spot .name b { display: block; font: var(--font-heading-h1); letter-spacing: -0.5px; }
+  .spot .name small { display: block; font: var(--font-body-small); color: var(--text-muted-inverse); margin-top: 6px; }
+  .spot[aria-expanded="true"] { opacity: 0; pointer-events: none; }
+  @media (hover: hover) and (min-width: 900px) {
+    .spot:hover, .spot:focus-visible { width: 381.67px; }
+    .spot:hover .name, .spot:focus-visible .name { opacity: 1; }
+  }
+
+  /* Open card */
+  .card {
+    position: absolute; width: 381.67px; display: none; flex-direction: column; gap: var(--space-3);
+    padding: var(--space-3) 14px; border-radius: var(--radius-lg);
+    background: var(--bg-subtle); color: var(--text-primary);
+  }
+  .card.open { display: flex; animation: pop var(--duration-base) var(--ease-ui); }
+  @keyframes pop { from { opacity: 0; transform: scale(.97); } }
+  .card header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+  .card h2 { margin: 0; flex: 1; font: var(--font-heading-h1); letter-spacing: -0.5px; }
+  .close {
+    all: unset; cursor: pointer; flex: none; width: 42px; height: 42px; border-radius: var(--radius-lg);
+    display: grid; place-items: center; color: var(--text-primary);
+  }
+  .close .plus { transform: rotate(45deg); }
+  .close:focus-visible { outline: 2px solid var(--border-strong); outline-offset: 2px; }
+  .card .items { display: flex; flex-direction: column; gap: var(--space-2); }
+  .item {
+    background: var(--bg-canvas); border: 1px solid var(--border-default); border-radius: var(--radius-lg);
+    padding: var(--space-3) 14px; font: var(--font-body-small);
+    display: flex; flex-direction: column; gap: var(--space-3);
+  }
+  .item p { margin: 0; }
+  .item ul { margin: 0; padding-left: 18px; }
+  .item img { display: block; width: 100%; height: auto; }
+
+  /* Anchors from the Figma frame */
+  #spot-optical   { right: 56.97%;  top: 14.087%; }
+  #spot-ai        { left: 61.298%;  top: 40.155%; justify-content: flex-start; }
+  #spot-sampling  { right: 43.174%; top: 69.355%; }
+  #card-optical   { right: 56.78%;  top: 14.087%; }
+  #card-ai        { left: 61.298%;  top: 40.155%; }
+  #card-sampling  { right: 42.538%; top: 69.355%; }
+  /* AI computing opens to the right, so its plus sits on the left */
+  #spot-ai .plus { order: -1; }
+
+  /* Narrow embeds: hotspots stay on the photo, cards open below it */
+  @media (max-width: 899px) {
+    .cards { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-2); }
+    .card { position: static; width: auto; }
+    .spot[aria-expanded="true"] { opacity: 1; pointer-events: auto; }
+    .spot[aria-expanded="true"] .plus { transform: rotate(45deg); }
+    .spot { min-height: 44px; width: 44px; padding: 7px; justify-content: center; }
+    .spot .name { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+</style>
+<script>
+  // Optional theme override for embeds: ?theme=light or ?theme=dark
+  (function () {
+    var t = new URLSearchParams(location.search).get("theme");
+    if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+  })();
+</script>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="plus" viewBox="0 0 30 30"><path fill="currentColor" d="M15 4.5C15.5523 4.5 16 4.94772 16 5.5V14H24.5C25.0523 14 25.5 14.4477 25.5 15C25.5 15.5523 25.0523 16 24.5 16H16V24.5C16 25.0523 15.5523 25.5 15 25.5C14.4477 25.5 14 25.0523 14 24.5V16H5.5C4.94772 16 4.5 15.5523 4.5 15C4.5 14.4477 4.94772 14 5.5 14H14V5.5C14 4.94772 14.4477 4.5 15 4.5Z"/></symbol>
+</svg>
+
+<div class="wrap">
+  <div class="stage" id="stage">
+    <img class="bg" src="hardware-bg.webp" alt="">
+    <img class="device" src="hardware-device.webp" alt="The Lir inline microscope installed on an aeration lane railing">
+
+    <button class="spot" id="spot-optical" aria-expanded="false" aria-controls="card-optical">
+      <span class="name"><b>On-site optical analysis</b><small>how we analyze your treatment</small></span>
+      <svg class="plus" aria-hidden="true"><use href="#plus"/></svg>
+    </button>
+    <button class="spot" id="spot-ai" aria-expanded="false" aria-controls="card-ai">
+      <span class="name"><b>On device AI computing</b></span>
+      <svg class="plus" aria-hidden="true"><use href="#plus"/></svg>
+    </button>
+    <button class="spot" id="spot-sampling" aria-expanded="false" aria-controls="card-sampling">
+      <span class="name"><b>Sampling frequency</b></span>
+      <svg class="plus" aria-hidden="true"><use href="#plus"/></svg>
+    </button>
+
+    <div class="cards" id="cards">
+      <section class="card" id="card-optical" aria-labelledby="t-optical">
+        <header>
+          <h2 id="t-optical">On-site optical analysis</h2>
+          <button class="close" aria-label="Close On-site optical analysis"><svg class="plus" aria-hidden="true"><use href="#plus"/></svg></button>
+        </header>
+        <div class="items">
+          <div class="item"><p>We use the same microscopy techniques you would use in a lab.</p></div>
+          <div class="item"><p>We collect more than 3000 images in the first month of a pilot.</p></div>
+          <div class="item"><p>We see changes in your treatment 48 hours before regular tabletop microscopy detects it.</p></div>
+        </div>
+      </section>
+
+      <section class="card" id="card-ai" aria-labelledby="t-ai">
+        <header>
+          <button class="close" aria-label="Close On device AI computing"><svg class="plus" aria-hidden="true"><use href="#plus"/></svg></button>
+          <h2 id="t-ai">On device AI computing</h2>
+        </header>
+        <div class="items">
+          <div class="item">
+            <p>Characteristics we look for:</p>
+            <ul>
+              <li>Filamentous bacteria presence and size</li>
+              <li>Floc morphology and size</li>
+              <li>Biological indicators (organisms)</li>
+            </ul>
+          </div>
+          <div class="item">
+            <p>Computer vision to analyse your biology</p>
+            <img src="computer-vision.jpg" alt="A microscope image of activated sludge, its segmentation mask, and the mask laid over the image">
+          </div>
+        </div>
+      </section>
+
+      <section class="card" id="card-sampling" aria-labelledby="t-sampling">
+        <header>
+          <h2 id="t-sampling">Sampling frequency</h2>
+          <button class="close" aria-label="Close Sampling frequency"><svg class="plus" aria-hidden="true"><use href="#plus"/></svg></button>
+        </header>
+        <div class="items">
+          <div class="item"><p>We sample once every hour, reports are produced daily.</p></div>
+          <div class="item"><p>One analysis takes 9 minutes.</p></div>
+          <div class="item"><p>We sample directly from your aeration lane and can analyze particles under 1 mm.</p></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var stage = document.getElementById("stage");
+    var cards = document.getElementById("cards");
+    var wide = window.matchMedia("(min-width: 900px)");
+
+    // Narrow: move the cards below the photo; wide: back over it.
+    function place() {
+      if (wide.matches) { if (cards.parentNode !== stage) stage.appendChild(cards); }
+      else if (cards.parentNode === stage) stage.parentNode.appendChild(cards);
+    }
+    place();
+    wide.addEventListener("change", place);
+
+    function set(spot, open) {
+      var card = document.getElementById(spot.getAttribute("aria-controls"));
+      spot.setAttribute("aria-expanded", String(open));
+      card.classList.toggle("open", open);
+      if (open && wide.matches) card.querySelector(".close").focus();
+      if (!open && wide.matches) spot.focus();
+    }
+
+    document.querySelectorAll(".spot").forEach(function (spot) {
+      spot.addEventListener("click", function () {
+        set(spot, spot.getAttribute("aria-expanded") !== "true");
+      });
+    });
+    document.querySelectorAll(".card .close").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var card = btn.closest(".card");
+        set(document.querySelector('[aria-controls="' + card.id + '"]'), false);
+      });
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key !== "Escape") return;
+      var card = document.activeElement && document.activeElement.closest && document.activeElement.closest(".card.open");
+      if (card) set(document.querySelector('[aria-controls="' + card.id + '"]'), false);
+    });
+  })();
+</script>
+</body>
+</html>
